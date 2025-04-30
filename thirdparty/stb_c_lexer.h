@@ -321,13 +321,14 @@ static int stb__clex_iswhite(int x)
    return x == ' ' || x == '\t' || x == '\r' || x == '\n' || x == '\f';
 }
 
-static const char *stb__strchr(const char *str, int ch)
-{
-   for (; *str; ++str)
-      if (*str == ch)
-         return str;
-   return 0;
-}
+// TODO: figure out if it is actually useful cause gcc fives unused function warning
+// static const char *stb__strchr(const char *str, int ch)
+// {
+//    for (; *str; ++str)
+//       if (*str == ch)
+//          return str;
+//    return 0;
+// }
 
 // parse suffixes at the end of a number
 static int stb__clex_parse_suffixes(stb_lexer *lexer, long tokenid, char *start, char *cur, const char *suffixes)

@@ -1,1 +1,7 @@
-println("Hello, World");
+declare fn putchar(int);
+declare fn putchar(char);
+declare fn printf(string);
+
+printf("Hello, World!\\n");
+
+

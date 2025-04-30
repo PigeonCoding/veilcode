@@ -1,5 +1,5 @@
 naned: naned.c
-	gcc naned.c -o out/naned
+	cc naned.c -Wall -Wextra -o out/naned
 prt_gcc: prt.asm
 	fasm ./prt.asm
 	mv prt.o ./out/prt_gcc.o
