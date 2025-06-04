@@ -1,5 +1,9 @@
-let a = 35 + 34;
-let b = a;
+let a: char = 35 + 34;
+let b: int;
 
-let sys_exit = 60;
-syscall(sys_exit, a)
+let arr: [10]int;
+
+arr[5] = a;
+
+let sys_exit: int = 60;
+syscall(sys_exit, arr[5]);

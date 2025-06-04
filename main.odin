@@ -15,10 +15,19 @@ builder_append_string :: proc(b: ^strings.Builder, str: string) {
 }
 
 // NOTE: linux x86_64 calling convention
-//   ints:   RDI, RSI, RDX, RCX, R8, and R9 
-//   floats: XMM0 to XMM7
-//   ret:    RAX for int XMM0 for float
-generate_fasm_x86_64_linux :: proc(instrs: []n_instrs, store_num: int) -> string {
+// ints  : RAX, RDI, RSI, RDX, RCX, R8, and R9 
+// floats: XMM0 to XMM7
+// ret   : RAX for int XMM0 for float
+
+// NOTE: sizes for x86_64
+// `db`          : 1 byte
+// `dw`          : 2 bytes
+// `dd`          : 4 bytes
+// `dq`          : 8 bytes
+// `dt`          : 10 bytes
+// `db n dup(0)` : n bytes
+
+generate_fasm_x86_64_linux :: proc(instrs: []n_instrs) -> string {
   res: strings.Builder
   builder_append_string(&res, "format ELF64\n")
 
@@ -39,7 +48,19 @@ generate_fasm_x86_64_linux :: proc(instrs: []n_instrs, store_num: int) -> string
   for instr in instrs {
     if instr.instr == .store {
       builder_append_string(&res, instr.name)
-      builder_append_string(&res, ": db \"12345678\"\n")
+      switch instr.type {
+      case .n_char:
+        fmt.sbprintf(&res, ": db %d dup(0)", instr.type_num)
+      case .n_int:
+        fmt.sbprintf(&res, ": dq %d dup(0)", instr.type_num)
+      case .n_none:
+        fmt.eprintln(
+          "this should not have happened but a variable has the type none we are fucked",
+        )
+        os.exit(1)
+      }
+      builder_append_string(&res, "\n")
+
     }
   }
 
@@ -64,13 +85,12 @@ get_arg_num_from_call :: proc(instrs: []n_instrs) -> int {
   return arg_num
 }
 
-tmp: int = 0
 generate_fasm_x86_64_linux_instr :: proc(instrs: []n_instrs, b: ^strings.Builder) {
   syscall_reg_list := [?]string{"rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"}
   for instr in instrs {
-    if len(instr.params) != 0 {
-      generate_fasm_x86_64_linux_instr(instr.params[:], b)
-    }
+    if len(instr.params) != 0 do generate_fasm_x86_64_linux_instr(instr.params[:], b)
+
+    if len(instr.params) == 0 && instr.instr == .store do continue
 
     #partial switch instr.instr {
     case .push:
@@ -111,16 +131,22 @@ generate_fasm_x86_64_linux_instr :: proc(instrs: []n_instrs, b: ^strings.Builder
       fmt.sbprintf(b, "  mov rax, r15\n")
       fmt.sbprintf(b, "  mov rdx, r14\n")
     case .store:
-      fmt.sbprintf(b, "  pop QWORD[%s]\n", instr.name)
+      fmt.sbprintf(b, "  pop QWORD[%s + %d]\n", instr.name, instr.offset)
+    case .assign:
+      if auto_cast instr.offset > instr.type_num - 1 {
+        fmt.eprintln(
+          "tried to access an array outside of its bounds please reconsider your life choices",
+        )
+        os.exit(1)
+      }
+      fmt.sbprintf(b, "  pop QWORD[%s + %d]\n", instr.name, instr.offset)
     case .load:
-      fmt.sbprintf(b, "  push QWORD[%s]\n", instr.name)
-    // case .compiler_stuff:
-    //   tmp = auto_cast instr.val
+      fmt.sbprintf(b, "  push QWORD[%s + %d]\n", instr.name, instr.offset)
     case .syscall:
       arg_num := get_arg_num_from_call(instr.params[:])
 
       for i in 0 ..< arg_num {
-        fmt.sbprintf(b, "  pop %s\n", syscall_reg_list[ arg_num - i - 1])
+        fmt.sbprintf(b, "  pop %s\n", syscall_reg_list[arg_num - i - 1])
       }
       fmt.sbprintf(b, "  syscall\n")
     case:
@@ -142,9 +168,9 @@ main :: proc() {
     assert(false, "not implemented for platforms that are not linux")
   }
 
-  instrs, store_num := parse({"test.nn"})
+  instrs := parse({"test.nn"})
   // fmt.println(instrs)
 
-  fmt.println(generate_fasm_x86_64_linux(instrs, store_num))
+  fmt.println(generate_fasm_x86_64_linux(instrs))
 
 }

@@ -72,5 +72,18 @@ get_and_expect :: proc(l: ^lexer, expected: c.long) -> bool {
 }
 
 get_and_expect_and_assert :: proc(l: ^lexer, expected: c.long) {
-  fmt.assertf(get_and_expect(l, expected), "expected %c but got %c", expected, l.token)
+
+  res := get_and_expect(l, expected)
+
+  loc: lex_location
+  get_location(l, l.where_firstchar, &loc)
+
+  fmt.assertf(
+    res,
+    "'%d:%d expected %d but got %d'",
+    loc.line_number,
+    loc.line_offset + 1,
+    expected,
+    l.token,
+  )
 }

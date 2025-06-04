@@ -5,32 +5,32 @@ import "core:mem"
 import "core:os"
 import "core:strings"
 
-string_to_type :: proc(s: string) -> (type: n_types, err: bool) {
+string_to_type :: proc(s: string) -> n_types {
   switch s {
   case "int":
-    return .n_int, false
+    return .n_int
   case "char":
-    return .n_char, false
-  case "string":
-    return .n_string, false
-  case "bool":
-    return .n_bool, false
-  case "float":
-    return .n_float, false
-  case "void":
-    return .n_void, false
+    return .n_char
+  // case "string":
+  //   return .n_string
+  // case "bool":
+  //   return .n_bool
+  // case "float":
+  //   return .n_float
+  // case "void":
+  //   return .n_void
   case:
-    return .n_not_a_type, true
+    return .n_none
   }
 }
 
 
-fn_is_unique :: proc(f: ^fn, fns: []fn) -> bool {
-  for &func in fns {
-    if f.name == func.name do return false
-  }
-  return true
-}
+// fn_is_unique :: proc(f: ^fn, fns: []fn) -> bool {
+//   for &func in fns {
+//     if f.name == func.name do return false
+//   }
+//   return true
+// }
 
 
 clone_ptr_string :: proc(ptr: ^c.char, sz: int) -> string {

@@ -10,6 +10,7 @@ n_instrs_enum :: enum {
   compiler_stuff,
   push,
   store,
+  assign,
   load,
   call,
   syscall,
@@ -19,47 +20,57 @@ n_instrs_enum :: enum {
   div,
 }
 
-// TODO: support floats
+n_types :: enum {
+  n_none,
+  n_int,
+  n_char,
+}
+store_list: [dynamic]n_types
+
+
+// TODO: support floats in code
 n_instrs :: struct {
-  instr:  n_instrs_enum,
-  name:   string,
-  val:    i64,
-  flt:    f64,
-  params: [dynamic]n_instrs,
+  instr:    n_instrs_enum,
+  name:     string,
+  type:     n_types,
+  type_num: uint,
+  offset:   int,
+  val:      i64,
+  flt:      f64,
+  params:   [dynamic]n_instrs,
 }
 // 
 
-n_types :: enum {
-  n_not_a_type,
-  n_void,
-  n_int,
-  n_float,
-  n_string,
-  n_char,
-  n_bool,
-}
+// n_types :: enum {
+//   n_not_a_type,
+//   n_void,
+//   n_int,
+//   n_float,
+//   n_string,
+//   n_char,
+//   n_bool,
+// }
 
-fn_params :: struct {
-  name: string,
-  ptr:  bool,
-  type: n_types,
-}
-fn :: struct {
-  name:        string,
-  return_type: n_types,
-  params:      [dynamic]fn_params,
-  body:        [dynamic]n_instrs,
-}
+// fn_params :: struct {
+//   name: string,
+//   ptr:  bool,
+//   type: n_types,
+// }
+// fn :: struct {
+//   name:        string,
+//   return_type: n_types,
+//   params:      [dynamic]fn_params,
+//   body:        [dynamic]n_instrs,
+// }
 
-var :: struct {
-  name: string,
-}
+// var :: struct {
+//   name: string,
+// }
 
-parse :: proc(file_path: []string) -> ([]n_instrs, int) {
-  fns: [dynamic]fn
-  defer delete(fns)
+parse :: proc(file_path: []string) -> []n_instrs {
+  // fns: [dynamic]fn
+  // defer delete(fns)
   instrs: [dynamic]n_instrs
-  store_num := 0
 
   for file in file_path {
     l: lexer
@@ -80,261 +91,291 @@ parse :: proc(file_path: []string) -> ([]n_instrs, int) {
       switch auto_cast l.token {
       case CLEX.id:
         if strings.string_from_ptr(l.string, auto_cast l.string_len) == "let" {
-          store_num += 1
+          // store_num += 1
           ins: n_instrs
 
           get_and_expect_and_assert(&l, auto_cast CLEX.id)
 
           ins.instr = .store
-          ins.val = auto_cast store_num
+          ins.val = 1
+          ins.type_num = 1
           ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
 
-          get_and_expect_and_assert(&l, '=')
+
+          get_and_expect_and_assert(&l, ':')
           get_token(&l)
 
-          // {
-          //   first_ins: n_instrs
-          //   first_ins.instr = .push
-          //   first_ins.val = 0
-          //   append(&ins.params, first_ins)
+          if l.token == '[' {
+            get_and_expect_and_assert(&l, auto_cast CLEX.intlit)
+            ins.type_num = auto_cast l.int_number
+            get_and_expect_and_assert(&l, ']')
+            get_token(&l)
+          }
+          fmt.assertf(l.token == auto_cast CLEX.id, "expected id but got {}", l.token)
+          // get_and_expect(&l, auto_cast CLEX.id)
+          ins.type = string_to_type(strings.string_from_ptr(l.string, auto_cast l.string_len))
+
+          // if !get_and_expect(&l, '=') && ins.type_num == 0 {
+          //   fmt.eprintfln("expected")
           // }
 
-          for l.token != ';' {
-            switch auto_cast l.token {
-            case CLEX.intlit, CLEX.charlit:
-              tmp_ins: n_instrs
-              tmp_ins.instr = .push
-              tmp_ins.val = l.int_number
-              append(&ins.params, tmp_ins)
-            case CLEX.id:
-              tmp_ins: n_instrs
-              // tmp_ins.instr = .push
-
-              yes := false
-              s := clone_ptr_string(l.string, auto_cast l.string_len)
-              for n in instrs {
-                if n.name == s && n.instr == n_instrs_enum.store {
-                  // tmp2_ins: n_instrs
-                  tmp_ins.instr = .load
-                  tmp_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
-                  // append(&tmp_ins.params, tmp2_ins)
-                  yes = true
-                }
-              }
-              if !yes {
-                for f in fns {
-                  if f.name == s {
-                    get_and_expect_and_assert(&l, '(')
-                    fmt.assertf(false, "not implemented function calling")
-                    // tmp2_ins: n_instrs
-                    // tmp2_ins.instr = .call
-                    // tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
-                    // append(&tmp_ins.params, tmp2_ins)
-                    // yes = true
-                  }
-                }
-              }
-              if !yes {
-                fmt.eprintln("get ur shit together wtf is", s)
-                os.exit(1)
-              }
-              append(&ins.params, tmp_ins)
-
-            case '+':
-              tmp_ins: n_instrs
-              tmp_ins.instr = .add
-              get_token(&l)
-              if l.token != auto_cast CLEX.charlit &&
-                 l.token != auto_cast CLEX.intlit &&
-                 l.token != auto_cast CLEX.id {
-                fmt.eprintln("didn't expect this token", l.token)
-                os.exit(1)
-              }
-              switch auto_cast l.token {
-              case CLEX.intlit, CLEX.charlit:
-                tmp_ins.val = l.int_number
-              case CLEX.id:
-                yes := false
-                s := clone_ptr_string(l.string, auto_cast l.string_len)
-                for n in instrs {
-                  if n.name == s {
-                    tmp2_ins: n_instrs
-                    tmp2_ins.instr = .load
-                    tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
-                    append(&tmp_ins.params, tmp2_ins)
-                    yes = true
-                  }
-                }
-                if !yes {
-                  for f in fns {
-                    if f.name == s {
-                      get_and_expect_and_assert(&l, '(')
-                      tmp2_ins: n_instrs
-                      tmp2_ins.instr = .call
-                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
-                      append(&tmp_ins.params, tmp2_ins)
-                      yes = true
-                    }
-                  }
-                }
-                if !yes {
-                  fmt.eprintln("get ur shit together wtf is", s)
-                  os.exit(1)
-                }
-
-              case:
-                fmt.eprintln("wat is hapening", l.token)
-              }
-
-              append(&ins.params, tmp_ins)
-            case '-':
-              tmp_ins: n_instrs
-              tmp_ins.instr = .sub
-              get_token(&l)
-              if l.token != auto_cast CLEX.charlit &&
-                 l.token != auto_cast CLEX.intlit &&
-                 l.token != auto_cast CLEX.id {
-                fmt.eprintln("didn't expect this token", l.token)
-                os.exit(1)
-              }
-              switch auto_cast l.token {
-              case CLEX.intlit, CLEX.charlit:
-                tmp_ins.val = l.int_number
-              case CLEX.id:
-                yes := false
-                s := clone_ptr_string(l.string, auto_cast l.string_len)
-                for n in instrs {
-                  if n.name == s {
-                    tmp2_ins: n_instrs
-                    tmp2_ins.instr = .load
-                    tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
-                    append(&tmp_ins.params, tmp2_ins)
-                    yes = true
-                  }
-                }
-                if !yes {
-                  for f in fns {
-                    if f.name == s {
-                      get_and_expect_and_assert(&l, '(')
-                      tmp2_ins: n_instrs
-                      tmp2_ins.instr = .call
-                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
-                      append(&tmp_ins.params, tmp2_ins)
-                      yes = true
-                    }
-                  }
-                }
-                if !yes {
-                  fmt.eprintln("get ur shit together wtf is", s)
-                  os.exit(1)
-                }
-
-              case:
-                fmt.eprintln("wat is hapening", l.token)
-              }
-
-              append(&ins.params, tmp_ins)
-            case '*':
-              tmp_ins: n_instrs
-              tmp_ins.instr = .mult
-              get_token(&l)
-              if l.token != auto_cast CLEX.charlit &&
-                 l.token != auto_cast CLEX.intlit &&
-                 l.token != auto_cast CLEX.id {
-                fmt.eprintln("didn't expect this token", l.token)
-                os.exit(1)
-              }
-              switch auto_cast l.token {
-              case CLEX.intlit, CLEX.charlit:
-                tmp_ins.val = l.int_number
-              case CLEX.id:
-                yes := false
-                s := clone_ptr_string(l.string, auto_cast l.string_len)
-                for n in instrs {
-                  if n.name == s {
-                    tmp2_ins: n_instrs
-                    tmp2_ins.instr = .load
-                    tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
-                    append(&tmp_ins.params, tmp2_ins)
-                    yes = true
-                  }
-                }
-                if !yes {
-                  for f in fns {
-                    if f.name == s {
-                      get_and_expect_and_assert(&l, '(')
-                      tmp2_ins: n_instrs
-                      tmp2_ins.instr = .call
-                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
-                      append(&tmp_ins.params, tmp2_ins)
-                      yes = true
-                    }
-                  }
-                }
-                if !yes {
-                  fmt.eprintln("get ur shit together wtf is", s)
-                  os.exit(1)
-                }
-
-              case:
-                fmt.eprintln("wat is hapening", l.token)
-              }
-
-
-              append(&ins.params, tmp_ins)
-            case '/':
-              tmp_ins: n_instrs
-              tmp_ins.instr = .div
-              get_token(&l)
-              if l.token != auto_cast CLEX.charlit &&
-                 l.token != auto_cast CLEX.intlit &&
-                 l.token != auto_cast CLEX.id {
-                fmt.eprintln("didn't expect this token", l.token)
-                os.exit(1)
-              }
-              switch auto_cast l.token {
-              case CLEX.intlit, CLEX.charlit:
-                tmp_ins.val = l.int_number
-              case CLEX.id:
-                yes := false
-                s := clone_ptr_string(l.string, auto_cast l.string_len)
-                for n in instrs {
-                  if n.name == s {
-                    tmp2_ins: n_instrs
-                    tmp2_ins.instr = .load
-                    tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
-                    append(&tmp_ins.params, tmp2_ins)
-                    yes = true
-                  }
-                }
-                if !yes {
-                  for f in fns {
-                    if f.name == s {
-                      get_and_expect_and_assert(&l, '(')
-                      tmp2_ins: n_instrs
-                      tmp2_ins.instr = .call
-                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
-                      append(&tmp_ins.params, tmp2_ins)
-                      yes = true
-                    }
-                  }
-                }
-                if !yes {
-                  fmt.eprintln("get ur shit together wtf is", s)
-                  os.exit(1)
-                }
-
-              case:
-                fmt.eprintln("wat is hapening", l.token)
-              }
-
-              append(&ins.params, tmp_ins)
-
-            case:
-              fmt.eprintln("wtf unexpected {}", l.token)
-              os.exit(1)
-            }
+          get_token(&l)
+          if l.token == '=' {
             get_token(&l)
+
+            for l.token != ';' {
+              switch auto_cast l.token {
+              case CLEX.intlit, CLEX.charlit:
+                tmp_ins: n_instrs
+                tmp_ins.instr = .push
+                tmp_ins.val = l.int_number
+                append(&ins.params, tmp_ins)
+              case CLEX.id:
+                tmp_ins: n_instrs
+                // tmp_ins.instr = .push
+
+                yes := false
+                s := clone_ptr_string(l.string, auto_cast l.string_len)
+                for n in instrs {
+                  if n.name == s && n.instr == n_instrs_enum.store {
+                    // tmp2_ins: n_instrs
+                    tmp_ins.instr = .load
+                    tmp_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    // append(&tmp_ins.params, tmp2_ins)
+                    yes = true
+                  }
+                }
+                if !yes {
+                  // for f in fns {
+                  //   if f.name == s {
+                  //     get_and_expect_and_assert(&l, '(')
+                  //     fmt.assertf(false, "not implemented function calling")
+                  //     // tmp2_ins: n_instrs
+                  //     // tmp2_ins.instr = .call
+                  //     // tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                  //     // append(&tmp_ins.params, tmp2_ins)
+                  //     // yes = true
+                  //   }
+                  // }
+                }
+                if !yes {
+                  fmt.eprintln("get ur shit together wtf is", s)
+                  os.exit(1)
+                }
+                append(&ins.params, tmp_ins)
+
+              case '+':
+                tmp_ins: n_instrs
+                tmp_ins.instr = .add
+                get_token(&l)
+                if l.token != auto_cast CLEX.charlit &&
+                   l.token != auto_cast CLEX.intlit &&
+                   l.token != auto_cast CLEX.id {
+                  fmt.eprintln("didn't expect this token", l.token)
+                  os.exit(1)
+                }
+                switch auto_cast l.token {
+                case CLEX.intlit, CLEX.charlit:
+                  tmp_ins.val = l.int_number
+                case CLEX.id:
+                  yes := false
+                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  for n in instrs {
+                    if n.name == s {
+                      tmp2_ins: n_instrs
+                      tmp2_ins.instr = .load
+                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      append(&tmp_ins.params, tmp2_ins)
+                      yes = true
+                    }
+                  }
+                  if !yes {
+                    // for f in fns {
+                    //   if f.name == s {
+                    //     get_and_expect_and_assert(&l, '(')
+                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins.instr = .call
+                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     append(&tmp_ins.params, tmp2_ins)
+                    //     yes = true
+                    //   }
+                    // }
+                  }
+                  if !yes {
+                    fmt.eprintln("get ur shit together wtf is", s)
+                    os.exit(1)
+                  }
+
+                case:
+                  fmt.eprintln("wat is hapening", l.token)
+                }
+
+                append(&ins.params, tmp_ins)
+              case '-':
+                tmp_ins: n_instrs
+                tmp_ins.instr = .sub
+                get_token(&l)
+                if l.token != auto_cast CLEX.charlit &&
+                   l.token != auto_cast CLEX.intlit &&
+                   l.token != auto_cast CLEX.id {
+                  fmt.eprintln("didn't expect this token", l.token)
+                  os.exit(1)
+                }
+                switch auto_cast l.token {
+                case CLEX.intlit, CLEX.charlit:
+                  tmp_ins.val = l.int_number
+                case CLEX.id:
+                  yes := false
+                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  for n in instrs {
+                    if n.name == s {
+                      tmp2_ins: n_instrs
+                      tmp2_ins.instr = .load
+                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      append(&tmp_ins.params, tmp2_ins)
+                      yes = true
+                    }
+                  }
+                  if !yes {
+                    // for f in fns {
+                    //   if f.name == s {
+                    //     get_and_expect_and_assert(&l, '(')
+                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins.instr = .call
+                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     append(&tmp_ins.params, tmp2_ins)
+                    //     yes = true
+                    //   }
+                    // }
+                  }
+                  if !yes {
+                    fmt.eprintln("get ur shit together wtf is", s)
+                    os.exit(1)
+                  }
+
+                case:
+                  fmt.eprintln("wat is hapening", l.token)
+                }
+
+                append(&ins.params, tmp_ins)
+              case '*':
+                tmp_ins: n_instrs
+                tmp_ins.instr = .mult
+                get_token(&l)
+                if l.token != auto_cast CLEX.charlit &&
+                   l.token != auto_cast CLEX.intlit &&
+                   l.token != auto_cast CLEX.id {
+                  fmt.eprintln("didn't expect this token", l.token)
+                  os.exit(1)
+                }
+                switch auto_cast l.token {
+                case CLEX.intlit, CLEX.charlit:
+                  tmp_ins.val = l.int_number
+                case CLEX.id:
+                  yes := false
+                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  for n in instrs {
+                    if n.name == s {
+                      tmp2_ins: n_instrs
+                      tmp2_ins.instr = .load
+                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      append(&tmp_ins.params, tmp2_ins)
+                      yes = true
+                    }
+                  }
+                  if !yes {
+                    // for f in fns {
+                    //   if f.name == s {
+                    //     get_and_expect_and_assert(&l, '(')
+                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins.instr = .call
+                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     append(&tmp_ins.params, tmp2_ins)
+                    //     yes = true
+                    //   }
+                    // }
+                  }
+                  if !yes {
+                    fmt.eprintln("get ur shit together wtf is", s)
+                    os.exit(1)
+                  }
+
+                case:
+                  fmt.eprintln("wat is hapening", l.token)
+                }
+
+
+                append(&ins.params, tmp_ins)
+              case '/':
+                tmp_ins: n_instrs
+                tmp_ins.instr = .div
+                get_token(&l)
+                if l.token != auto_cast CLEX.charlit &&
+                   l.token != auto_cast CLEX.intlit &&
+                   l.token != auto_cast CLEX.id {
+                  fmt.eprintln("didn't expect this token", l.token)
+                  os.exit(1)
+                }
+                switch auto_cast l.token {
+                case CLEX.intlit, CLEX.charlit:
+                  tmp_ins.val = l.int_number
+                case CLEX.id:
+                  yes := false
+                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  for n in instrs {
+                    if n.name == s {
+                      tmp2_ins: n_instrs
+                      tmp2_ins.instr = .load
+                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      append(&tmp_ins.params, tmp2_ins)
+                      yes = true
+                    }
+                  }
+                  if !yes {
+                    // for f in fns {
+                    //   if f.name == s {
+                    //     get_and_expect_and_assert(&l, '(')
+                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins.instr = .call
+                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     append(&tmp_ins.params, tmp2_ins)
+                    //     yes = true
+                    //   }
+                    // }
+                  }
+                  if !yes {
+                    fmt.eprintln("get ur shit together wtf is", s)
+                    os.exit(1)
+                  }
+
+                case:
+                  fmt.eprintln("wat is hapening", l.token)
+                }
+
+                append(&ins.params, tmp_ins)
+
+              case:
+                loc: lex_location
+                get_location(&l, l.where_firstchar, &loc)
+                if l.token < 256 {
+                  fmt.eprintfln(
+                    "%d:%d wtf unexpected %c",
+                    loc.line_number,
+                    loc.line_offset + 1,
+                    l.token,
+                  )
+                } else {
+                  fmt.eprintfln(
+                    "%d:%d wtf unexpected %d",
+                    loc.line_number,
+                    loc.line_offset + 1,
+                    l.token,
+                  )
+                }
+                os.exit(1)
+              }
+              get_token(&l)
+            }
           }
 
           append(&instrs, ins)
@@ -347,31 +388,37 @@ parse :: proc(file_path: []string) -> ([]n_instrs, int) {
           get_token(&l)
           for l.token != ')' {
             tmp_ins: n_instrs
+            tmp_ins.type_num = 1
             switch auto_cast l.token {
             case CLEX.intlit, CLEX.charlit:
               tmp_ins.instr = .push
               tmp_ins.val = l.int_number
             case CLEX.id:
               yes := false
-              s := clone_ptr_string(l.string, auto_cast l.string_len)
+              s := strings.string_from_ptr(l.string, auto_cast l.string_len)
 
               for n in instrs {
-                if n.name == s {
+                if n.name == s && n.instr == .store {
                   tmp_ins.instr = .load
-                  tmp_ins.name = s
-                  // append(&tmp_ins.params, tmp_ins) 
+                  tmp_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                  tmp_ins.type_num = n.type_num
+                  if n.type_num > 1 {
+                    get_and_expect_and_assert(&l, '[')
+                    get_and_expect_and_assert(&l, auto_cast CLEX.intlit)
+                    tmp_ins.offset = auto_cast l.int_number
+                    get_and_expect_and_assert(&l, ']')
+                  }
                   yes = true
                 }
               }
 
-
               if !yes {
-                for f in fns {
-                  if f.name == s {
-                    get_and_expect_and_assert(&l, '(')
-                    fmt.assertf(false, "not implemented function calls")
-                  }
-                }
+                // for f in fns {
+                //   if f.name == s {
+                //     get_and_expect_and_assert(&l, '(')
+                //     fmt.assertf(false, "not implemented function calls")
+                //   }
+                // }
               }
 
               if !yes {
@@ -389,16 +436,300 @@ parse :: proc(file_path: []string) -> ([]n_instrs, int) {
             if l.token == ',' do get_token(&l)
             append(&ins.params, tmp_ins)
           }
-          // {
-          //   tmp_instr: n_instrs
-          //   tmp_instr.instr = .compiler_stuff
-          //   tmp_instr.val = auto_cast len(ins.params)
-          //   append(&ins.params, tmp_instr)
-          // }
+
           append(&instrs, ins)
 
-        } else {
-          fmt.println(strings.string_from_ptr(l.string, auto_cast l.string_len))
+          get_and_expect_and_assert(&l, ';')
+        } else {   // VAR ASSIGNMENT OTHER THAN DECLARING
+          s := strings.string_from_ptr(l.string, auto_cast l.string_len)
+          yes2 := false
+          ins: n_instrs
+          for instr in instrs {
+            if instr.name == s {
+              ins.name = instr.name
+              ins.instr = .assign
+              ins.type = instr.type
+              ins.type_num = instr.type_num
+              yes2 = true
+            }
+          }
+          if !get_and_expect(&l, '=') && l.token == '[' {
+            get_and_expect_and_assert(&l, auto_cast CLEX.intlit)
+            ins.offset = auto_cast l.int_number
+            get_and_expect_and_assert(&l, ']')
+            get_and_expect_and_assert(&l, '=')
+          }
+
+          get_token(&l)
+
+          if yes2 {
+            for l.token != ';' {
+              switch auto_cast l.token {
+              case CLEX.intlit, CLEX.charlit:
+                tmp_ins: n_instrs
+                tmp_ins.instr = .push
+                tmp_ins.val = l.int_number
+                append(&ins.params, tmp_ins)
+              case CLEX.id:
+                tmp_ins: n_instrs
+                // tmp_ins.instr = .push
+
+                yes := false
+                s := clone_ptr_string(l.string, auto_cast l.string_len)
+                for n in instrs {
+                  if n.name == s && n.instr == n_instrs_enum.store {
+                    // tmp2_ins: n_instrs
+                    tmp_ins.instr = .load
+                    tmp_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    // append(&tmp_ins.params, tmp2_ins)
+                    yes = true
+                  }
+                }
+                if !yes {
+                  // for f in fns {
+                  //   if f.name == s {
+                  //     get_and_expect_and_assert(&l, '(')
+                  //     fmt.assertf(false, "not implemented function calling")
+                  //     // tmp2_ins: n_instrs
+                  //     // tmp2_ins.instr = .call
+                  //     // tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                  //     // append(&tmp_ins.params, tmp2_ins)
+                  //     // yes = true
+                  //   }
+                  // }
+                }
+                if !yes {
+                  fmt.eprintln("get ur shit together wtf is", s)
+                  os.exit(1)
+                }
+                append(&ins.params, tmp_ins)
+
+              case '+':
+                tmp_ins: n_instrs
+                tmp_ins.instr = .add
+                get_token(&l)
+                if l.token != auto_cast CLEX.charlit &&
+                   l.token != auto_cast CLEX.intlit &&
+                   l.token != auto_cast CLEX.id {
+                  fmt.eprintln("didn't expect this token", l.token)
+                  os.exit(1)
+                }
+                switch auto_cast l.token {
+                case CLEX.intlit, CLEX.charlit:
+                  tmp_ins.val = l.int_number
+                case CLEX.id:
+                  yes := false
+                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  for n in instrs {
+                    if n.name == s {
+                      tmp2_ins: n_instrs
+                      tmp2_ins.instr = .load
+                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      append(&tmp_ins.params, tmp2_ins)
+                      yes = true
+                    }
+                  }
+                  if !yes {
+                    // for f in fns {
+                    //   if f.name == s {
+                    //     get_and_expect_and_assert(&l, '(')
+                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins.instr = .call
+                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     append(&tmp_ins.params, tmp2_ins)
+                    //     yes = true
+                    //   }
+                    // }
+                  }
+                  if !yes {
+                    fmt.eprintln("get ur shit together wtf is", s)
+                    os.exit(1)
+                  }
+
+                case:
+                  fmt.eprintln("wat is hapening", l.token)
+                }
+
+                append(&ins.params, tmp_ins)
+              case '-':
+                tmp_ins: n_instrs
+                tmp_ins.instr = .sub
+                get_token(&l)
+                if l.token != auto_cast CLEX.charlit &&
+                   l.token != auto_cast CLEX.intlit &&
+                   l.token != auto_cast CLEX.id {
+                  fmt.eprintln("didn't expect this token", l.token)
+                  os.exit(1)
+                }
+                switch auto_cast l.token {
+                case CLEX.intlit, CLEX.charlit:
+                  tmp_ins.val = l.int_number
+                case CLEX.id:
+                  yes := false
+                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  for n in instrs {
+                    if n.name == s {
+                      tmp2_ins: n_instrs
+                      tmp2_ins.instr = .load
+                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      append(&tmp_ins.params, tmp2_ins)
+                      yes = true
+                    }
+                  }
+                  if !yes {
+                    // for f in fns {
+                    //   if f.name == s {
+                    //     get_and_expect_and_assert(&l, '(')
+                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins.instr = .call
+                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     append(&tmp_ins.params, tmp2_ins)
+                    //     yes = true
+                    //   }
+                    // }
+                  }
+                  if !yes {
+                    fmt.eprintln("get ur shit together wtf is", s)
+                    os.exit(1)
+                  }
+
+                case:
+                  fmt.eprintln("wat is hapening", l.token)
+                }
+
+                append(&ins.params, tmp_ins)
+              case '*':
+                tmp_ins: n_instrs
+                tmp_ins.instr = .mult
+                get_token(&l)
+                if l.token != auto_cast CLEX.charlit &&
+                   l.token != auto_cast CLEX.intlit &&
+                   l.token != auto_cast CLEX.id {
+                  fmt.eprintln("didn't expect this token", l.token)
+                  os.exit(1)
+                }
+                switch auto_cast l.token {
+                case CLEX.intlit, CLEX.charlit:
+                  tmp_ins.val = l.int_number
+                case CLEX.id:
+                  yes := false
+                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  for n in instrs {
+                    if n.name == s {
+                      tmp2_ins: n_instrs
+                      tmp2_ins.instr = .load
+                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      append(&tmp_ins.params, tmp2_ins)
+                      yes = true
+                    }
+                  }
+                  if !yes {
+                    // for f in fns {
+                    //   if f.name == s {
+                    //     get_and_expect_and_assert(&l, '(')
+                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins.instr = .call
+                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     append(&tmp_ins.params, tmp2_ins)
+                    //     yes = true
+                    //   }
+                    // }
+                  }
+                  if !yes {
+                    fmt.eprintln("get ur shit together wtf is", s)
+                    os.exit(1)
+                  }
+
+                case:
+                  fmt.eprintln("wat is hapening", l.token)
+                }
+
+
+                append(&ins.params, tmp_ins)
+              case '/':
+                tmp_ins: n_instrs
+                tmp_ins.instr = .div
+                get_token(&l)
+                if l.token != auto_cast CLEX.charlit &&
+                   l.token != auto_cast CLEX.intlit &&
+                   l.token != auto_cast CLEX.id {
+                  fmt.eprintln("didn't expect this token", l.token)
+                  os.exit(1)
+                }
+                switch auto_cast l.token {
+                case CLEX.intlit, CLEX.charlit:
+                  tmp_ins.val = l.int_number
+                case CLEX.id:
+                  yes := false
+                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  for n in instrs {
+                    if n.name == s {
+                      tmp2_ins: n_instrs
+                      tmp2_ins.instr = .load
+                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      append(&tmp_ins.params, tmp2_ins)
+                      yes = true
+                    }
+                  }
+                  if !yes {
+                    // for f in fns {
+                    //   if f.name == s {
+                    //     get_and_expect_and_assert(&l, '(')
+                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins.instr = .call
+                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     append(&tmp_ins.params, tmp2_ins)
+                    //     yes = true
+                    //   }
+                    // }
+                  }
+                  if !yes {
+                    fmt.eprintln("get ur shit together wtf is", s)
+                    os.exit(1)
+                  }
+
+                case:
+                  fmt.eprintln("wat is hapening", l.token)
+                }
+
+                append(&ins.params, tmp_ins)
+
+              case:
+                loc: lex_location
+                get_location(&l, l.where_firstchar, &loc)
+                if l.token < 256 {
+                  fmt.eprintfln(
+                    "%d:%d wtf unexpected %c",
+                    loc.line_number,
+                    loc.line_offset + 1,
+                    l.token,
+                  )
+                } else {
+                  fmt.eprintfln(
+                    "%d:%d wtf unexpected %d",
+                    loc.line_number,
+                    loc.line_offset + 1,
+                    l.token,
+                  )
+                }
+                os.exit(1)
+              }
+              get_token(&l)
+            }
+          }
+
+          append(&instrs, ins)
+
+
+          if ins.instr == .nun {
+            fmt.println(
+              "didn't assign anything to a variable apearently",
+              strings.string_from_ptr(l.string, auto_cast l.string_len),
+            )
+            os.exit(1)
+
+          }
+
         }
 
 
@@ -411,5 +742,5 @@ parse :: proc(file_path: []string) -> ([]n_instrs, int) {
 
   }
 
-  return instrs[:], store_num
+  return instrs[:]
 }
