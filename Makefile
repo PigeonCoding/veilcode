@@ -1,7 +1,7 @@
 naned: stb_c_lexer.o main.odin parser.odin stb_c_lexer.odin
 	odin build . -out:out/naned
 test: test.nn naned
-	./out/naned > ./out/test.asm
+	./out/naned
 	fasm ./out/test.asm
 	cc ./out/test.o -g -o out/test
 stb_c_lexer.o: thirdparty/stb_c_lexer.h
