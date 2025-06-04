@@ -1,9 +1,9 @@
 package naned_fasm_x86_64_linux
 
-import "core:os"
-import "core:fmt"
-import "core:strings"
 import cm "../../common"
+import "core:fmt"
+import "core:os"
+import "core:strings"
 
 // NOTE: linux x86_64 calling convention
 // ints  : RAX, RDI, RSI, RDX, RCX, R8, and R9 
@@ -97,6 +97,17 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
         fmt.sbprintf(b, "  add r15, r14\n")
         fmt.sbprintf(b, "  push r15\n")
       }
+    case .sub:
+      if instr.name == "" {
+        fmt.sbprintf(b, "  pop r15\n")
+        fmt.sbprintf(b, "  sub r15, %d\n", instr.val)
+        fmt.sbprintf(b, "  push r15\n")
+      } else {
+        fmt.sbprintf(b, "  pop r15\n")
+        fmt.sbprintf(b, "  pop r14\n")
+        fmt.sbprintf(b, "  sub r15, r14\n")
+        fmt.sbprintf(b, "  push r15\n")
+      }
     case .mult:
       fmt.sbprintf(b, "  mov r14, rax\n")
 
@@ -141,9 +152,10 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
       }
       fmt.sbprintf(b, "  syscall\n")
     case:
-      fmt.println("curent state:", string(b.buf[:]))
+      fmt.print("curent state: \n", string(b.buf[:]))
       fmt.println("-------------------------------------------")
       fmt.eprintln("unimplemented", instr.instr)
+      fmt.println(instrs)
       os.exit(1)
     }
   }

@@ -43,6 +43,7 @@ main :: proc() {
 
   // TODO: get input files from argv
   instrs := parse({"std.nn", "test.nn"})
+  // fmt.println(instrs)
 
   pros: os2.Process_Desc
   to_write: string

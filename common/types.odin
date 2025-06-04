@@ -2,7 +2,6 @@ package naned_common
 
 n_instrs_enum :: enum {
   nun,
-  compiler_stuff,
   push,
   store,
   assign,
@@ -13,6 +12,7 @@ n_instrs_enum :: enum {
   sub,
   mult,
   div,
+  jmp,
 }
 
 n_types :: enum {

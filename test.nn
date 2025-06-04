@@ -1,8 +1,18 @@
-let a: char = 35 + 34;
+let a: char =  45 - 30;
 let b: int;
 
 let arr: [10]int;
 
 arr[5] = a;
 
-syscall(sys_exit, arr[5]);
+syscall(sys_exit, a);
+
+// 
+// if ( a == 1 ) {
+//   syscall(sys_exit, arr[5]);
+// } else if ( a == 2 ) {
+//   syscall(sys_exit, 3);
+// } else {
+//   syscall(sys_exit, 2);
+// }
+// 
