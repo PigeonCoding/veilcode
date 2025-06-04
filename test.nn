@@ -1,3 +1,5 @@
-let a = 'H' * 45 / 21;
+let a = 35 + 34;
 let b = a;
 
+let sys_exit = 60;
+syscall(sys_exit, a)
