@@ -8,6 +8,15 @@ import "core:strings"
 
 store_list: [dynamic]cm.n_types
 
+peek :: proc(l: lexer) -> (c.long, bool) {
+  b_l: lexer
+  b_l = l
+  v := get_token(&b_l)
+
+  return b_l.token, v != 0
+}
+
+
 get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
   ins: cm.n_instrs
 
@@ -15,6 +24,39 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
   case CLEX.intlit, CLEX.charlit:
     ins.instr = .push
     ins.val = l.int_number
+  case '&':
+    if p, success := peek(l^); p == auto_cast CLEX.id && success {
+      get_token(l)
+      ins.instr = .push
+      ins.ptr = true
+      yes := false
+      s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
+      for n in instrs {
+        if n.name == s && n.instr == cm.n_instrs_enum.store {
+          ins.instr = .load
+          ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
+          ins.type_num = n.type_num
+          yes = true
+          {
+            next, success := peek(l^)
+            if success && next == '[' {
+              get_and_expect_and_assert(l, '[')
+              get_and_expect_and_assert(l, auto_cast CLEX.intlit)
+              ins.offset = auto_cast l.int_number
+              get_and_expect_and_assert(l, ']')
+            }
+          }
+        }
+      }
+      if !yes {
+        fmt.assertf(false, "function calling not implemented yet")
+      }
+      if !yes {
+        fmt.eprintln("1 get ur shit together wtf is", s)
+        os.exit(1)
+      }
+
+    }
   case CLEX.id:
     ins.instr = .push
 
@@ -24,25 +66,30 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
       if n.name == s && n.instr == cm.n_instrs_enum.store {
         ins.instr = .load
         ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
+        ins.type_num = n.type_num
         yes = true
+        {
+          next, success := peek(l^)
+          if success && next == '[' {
+            get_and_expect_and_assert(l, '[')
+            get_and_expect_and_assert(l, auto_cast CLEX.intlit)
+            ins.offset = auto_cast l.int_number
+            get_and_expect_and_assert(l, ']')
+          }
+        }
       }
     }
     if !yes {
-      // for f in fns {
-      //   if f.name == s {
-      //     get_and_expect_and_assert(&l, '(')
-      //     fmt.assertf(false, "not implemented function calling")
-      //     // tmp2_ins: cm.n_instrs
-      //     // tmp2_ins.instr = .call
-      //     // tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
-      //     // append(&tmp_ins.params, tmp2_ins)
-      //     // yes = true
-      //   }
-      // }
+      fmt.assertf(false, "function calling not implemented yet")
     }
     if !yes {
       fmt.eprintln("1 get ur shit together wtf is", s)
       os.exit(1)
+    }
+
+    if p, success := peek(l^); p == '*' && success {
+      ins.instr = .deref
+      get_token(l)
     }
 
   case '+':
@@ -70,16 +117,7 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
         }
       }
       if !yes {
-        // for f in fns {
-        //   if f.name == s {
-        //     get_and_expect_and_assert(&l, '(')
-        //     tmp2_ins: cm.n_instrs
-        //     tmp2_ins.instr = .call
-        //     tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
-        //     append(&tmp_ins.params, tmp2_ins)
-        //     yes = true
-        //   }
-        // }
+        fmt.assertf(false, "function calling not implemented yet")
       }
       if !yes {
         fmt.eprintln("2 get ur shit together wtf is", s)
@@ -115,16 +153,7 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
         }
       }
       if !yes {
-        // for f in fns {
-        //   if f.name == s {
-        //     get_and_expect_and_assert(l, '(')
-        //     tmp2_ins: cm.n_instrs
-        //     tmp2_ins.instr = .call
-        //     tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
-        //     append(&tmp_ins.params, tmp2_ins)
-        //     yes = true
-        //   }
-        // }
+        fmt.assertf(false, "function calling not implemented yet")
       }
       if !yes {
         fmt.eprintln("3 get ur shit together wtf is", s)
@@ -160,16 +189,7 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
         }
       }
       if !yes {
-        // for f in fns {
-        //   if f.name == s {
-        //     get_and_expect_and_assert(l, '(')
-        //     tmp2_ins: cm.n_instrs
-        //     tmp2_ins.instr = .call
-        //     tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
-        //     append(&tmp_ins.params, tmp2_ins)
-        //     yes = true
-        //   }
-        // }
+        fmt.assertf(false, "function calling not implemented yet")
       }
       if !yes {
         fmt.eprintln("4 get ur shit together wtf is", s)
@@ -201,19 +221,12 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
           tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
           append(&ins.params, tmp2_ins)
           yes = true
+
+
         }
       }
       if !yes {
-        // for f in fns {
-        //   if f.name == s {
-        //     get_and_expect_and_assert(&l, '(')
-        //     tmp2_ins: cm.n_instrs
-        //     tmp2_ins.instr = .call
-        //     tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
-        //     append(&tmp_ins.params, tmp2_ins)
-        //     yes = true
-        //   }
-        // }
+        fmt.assertf(false, "function calling not implemented yet")
       }
       if !yes {
         fmt.eprintln("5 get ur shit together wtf is", s)
@@ -227,6 +240,7 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
   case:
     loc: lex_location
     get_location(l, l.where_firstchar, &loc)
+
     if l.token < 256 {
       fmt.eprintfln("%d:%d 1 wtf unexpected %c", loc.line_number, loc.line_offset + 1, l.token)
     } else {
@@ -308,12 +322,12 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
           }
 
           get_token(&l)
-          fmt.println(l.token)
           append(&instrs, ins)
 
 
           fmt.assertf(l.token == ';', "expected ;")
         } else if strings.string_from_ptr(l.string, auto_cast l.string_len) == "if" {
+          fmt.assertf(false, "if NOT implemented yet")
           get_and_expect_and_assert(&l, '(')
 
 

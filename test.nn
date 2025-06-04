@@ -3,16 +3,16 @@ let b: int;
 
 let arr: [10]int;
 
-arr[5] = a;
+arr[5] = &a;
+b = a;
+// b = arr[5]*;
 
-syscall(sys_exit, a);
+syscall(sys_exit, arr[5]*);
 
-// 
 // if ( a == 1 ) {
-//   syscall(sys_exit, arr[5]);
+//   syscall(sys_exit, arr);
 // } else if ( a == 2 ) {
 //   syscall(sys_exit, 3);
 // } else {
 //   syscall(sys_exit, 2);
 // }
-// 

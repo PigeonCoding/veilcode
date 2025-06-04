@@ -67,7 +67,7 @@ get_arg_num_from_call :: proc(instrs: []cm.n_instrs) -> int {
       arg_num += get_arg_num_from_call(ins.params[:])
     }
 
-    if ins.instr == .push || ins.instr == .load {
+    if ins.instr == .push || ins.instr == .load || ins.instr == .deref {
       arg_num += 1
     }
 
@@ -75,6 +75,9 @@ get_arg_num_from_call :: proc(instrs: []cm.n_instrs) -> int {
 
   return arg_num
 }
+
+// r15 r14: used when doing math stuff
+// r13: used for derefrencing
 
 generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
   syscall_reg_list := [?]string{"rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"}
@@ -143,7 +146,19 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
       }
       fmt.sbprintf(b, "  pop QWORD[%s + %d]\n", instr.name, instr.offset)
     case .load:
-      fmt.sbprintf(b, "  push QWORD[%s + %d]\n", instr.name, instr.offset)
+      brack := []byte{'[', ' '}
+      brack2 := []byte{']', ' '}
+      fmt.sbprintf(
+        b,
+        "  push QWORD%c%s + %d%c\n",
+        brack[cast(int)instr.ptr],
+        instr.name,
+        instr.offset,
+        brack2[cast(int)instr.ptr],
+      )
+    case .deref:
+      fmt.sbprintf(b, "  mov r13, QWORD [%s + %d]\n", instr.name, instr.offset)
+      fmt.sbprintf(b, "  push QWORD[r13]\n")
     case .syscall:
       arg_num := get_arg_num_from_call(instr.params[:])
 

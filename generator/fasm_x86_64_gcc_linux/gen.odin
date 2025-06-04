@@ -67,7 +67,7 @@ get_arg_num_from_call :: proc(instrs: []cm.n_instrs) -> int {
       arg_num += get_arg_num_from_call(ins.params[:])
     }
 
-    if ins.instr == .push || ins.instr == .load {
+    if ins.instr == .push || ins.instr == .load || ins.instr == .deref {
       arg_num += 1
     }
 
@@ -75,6 +75,9 @@ get_arg_num_from_call :: proc(instrs: []cm.n_instrs) -> int {
 
   return arg_num
 }
+
+// r15 r14: used when doing math stuff
+// r13: used for derefrencing
 
 generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
   syscall_reg_list := [?]string{"rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"}
@@ -134,6 +137,14 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
       fmt.sbprintf(b, "  mov rdx, r14\n")
     case .store:
       fmt.sbprintf(b, "  pop QWORD[%s + %d]\n", instr.name, instr.offset)
+    case .deref:
+      {
+        fmt.eprintln("pointers are currently broken :(")
+        fmt.eprintln("please switch to fasm_x84_64_linux if possible")
+        os.exit(1)
+      }
+      // fmt.sbprintf(b, "  mov r10, QWORD [%s + %d]\n", instr.name, instr.offset)
+      // fmt.sbprintf(b, "  push QWORD[r10]\n")
     case .assign:
       if auto_cast instr.offset > instr.type_num - 1 {
         fmt.eprintln(

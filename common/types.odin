@@ -13,6 +13,7 @@ n_instrs_enum :: enum {
   mult,
   div,
   jmp,
+  deref,
 }
 
 n_types :: enum {
@@ -30,5 +31,6 @@ n_instrs :: struct {
   offset:   int,
   val:      i64,
   flt:      f64,
+  ptr:      bool,
   params:   [dynamic]n_instrs,
 }

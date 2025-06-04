@@ -52,6 +52,8 @@ main :: proc() {
     to_write = f86_64linux.generate(instrs)
   case .fasm_x86_64_gcc_linux:
     to_write = f86_64glinux.generate(instrs)
+    fmt.println("currently f86_64glinux pointers are kinda broken, my bad")
+    // os.exit(0)
   }
 
   b: strings.Builder
@@ -71,6 +73,6 @@ main :: proc() {
     if exec_and_run_sync([]string{"fasm", "./out/test.asm"}) != nil do os.exit(1)
   case .fasm_x86_64_gcc_linux:
     if exec_and_run_sync([]string{"fasm", "./out/test.asm"}) != nil do os.exit(1)
-    if exec_and_run_sync([]string{"cc", "./out/test.o", "-g", "-o", "out/test"}) != nil do os.exit(1)
+    if exec_and_run_sync([]string{"cc", "./out/test.o", "-g", "-no-pie", "-o", "out/test"}) != nil do os.exit(1)
   }
 }
