@@ -1,4 +1,4 @@
-naned: stb_c_lexer.o main.odin parser.odin utils.odin stb_c_lexer.odin
+naned: stb_c_lexer.o main.odin parser.odin stb_c_lexer.odin
 	odin build . -out:out/naned
 test: test.nn naned
 	./out/naned > ./out/test.asm

@@ -4,44 +4,15 @@ import "core:c"
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import cm "./common"
 
-n_instrs_enum :: enum {
-  nun,
-  compiler_stuff,
-  push,
-  store,
-  assign,
-  load,
-  call,
-  syscall,
-  add,
-  sub,
-  mult,
-  div,
-}
-
-n_types :: enum {
-  n_none,
-  n_int,
-  n_char,
-}
-store_list: [dynamic]n_types
+store_list: [dynamic]cm.n_types
 
 
-// TODO: support floats in code
-n_instrs :: struct {
-  instr:    n_instrs_enum,
-  name:     string,
-  type:     n_types,
-  type_num: uint,
-  offset:   int,
-  val:      i64,
-  flt:      f64,
-  params:   [dynamic]n_instrs,
-}
+
 // 
 
-// n_types :: enum {
+// cm.n_types :: enum {
 //   n_not_a_type,
 //   n_void,
 //   n_int,
@@ -54,29 +25,29 @@ n_instrs :: struct {
 // fn_params :: struct {
 //   name: string,
 //   ptr:  bool,
-//   type: n_types,
+//   type: cm.n_types,
 // }
 // fn :: struct {
 //   name:        string,
-//   return_type: n_types,
+//   return_type: cm.n_types,
 //   params:      [dynamic]fn_params,
-//   body:        [dynamic]n_instrs,
+//   body:        [dynamic]cm.n_instrs,
 // }
 
 // var :: struct {
 //   name: string,
 // }
 
-parse :: proc(file_path: []string) -> []n_instrs {
+parse :: proc(file_path: []string) -> []cm.n_instrs {
   // fns: [dynamic]fn
   // defer delete(fns)
-  instrs: [dynamic]n_instrs
-
+  instrs: [dynamic]cm.n_instrs
+  
   for file in file_path {
     l: lexer
     lex_store: []c.char = make([]c.char, 100)
 
-    buf, err := read_file("test.nn")
+    buf, err := cm.read_file(file)
     if err != nil {
       fmt.eprintfln("got error {}", err)
     }
@@ -92,14 +63,14 @@ parse :: proc(file_path: []string) -> []n_instrs {
       case CLEX.id:
         if strings.string_from_ptr(l.string, auto_cast l.string_len) == "let" {
           // store_num += 1
-          ins: n_instrs
+          ins: cm.n_instrs
 
           get_and_expect_and_assert(&l, auto_cast CLEX.id)
 
           ins.instr = .store
           ins.val = 1
           ins.type_num = 1
-          ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+          ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
 
 
           get_and_expect_and_assert(&l, ':')
@@ -113,7 +84,7 @@ parse :: proc(file_path: []string) -> []n_instrs {
           }
           fmt.assertf(l.token == auto_cast CLEX.id, "expected id but got {}", l.token)
           // get_and_expect(&l, auto_cast CLEX.id)
-          ins.type = string_to_type(strings.string_from_ptr(l.string, auto_cast l.string_len))
+          ins.type = cm.string_to_type(strings.string_from_ptr(l.string, auto_cast l.string_len))
 
           // if !get_and_expect(&l, '=') && ins.type_num == 0 {
           //   fmt.eprintfln("expected")
@@ -126,21 +97,22 @@ parse :: proc(file_path: []string) -> []n_instrs {
             for l.token != ';' {
               switch auto_cast l.token {
               case CLEX.intlit, CLEX.charlit:
-                tmp_ins: n_instrs
+
+                tmp_ins: cm.n_instrs
                 tmp_ins.instr = .push
                 tmp_ins.val = l.int_number
                 append(&ins.params, tmp_ins)
               case CLEX.id:
-                tmp_ins: n_instrs
+                tmp_ins: cm.n_instrs
                 // tmp_ins.instr = .push
 
                 yes := false
-                s := clone_ptr_string(l.string, auto_cast l.string_len)
+                s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
                 for n in instrs {
-                  if n.name == s && n.instr == n_instrs_enum.store {
-                    // tmp2_ins: n_instrs
+                  if n.name == s && n.instr == cm.n_instrs_enum.store {
+                    // tmp2_ins: cm.n_instrs
                     tmp_ins.instr = .load
-                    tmp_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    tmp_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                     // append(&tmp_ins.params, tmp2_ins)
                     yes = true
                   }
@@ -150,22 +122,22 @@ parse :: proc(file_path: []string) -> []n_instrs {
                   //   if f.name == s {
                   //     get_and_expect_and_assert(&l, '(')
                   //     fmt.assertf(false, "not implemented function calling")
-                  //     // tmp2_ins: n_instrs
+                  //     // tmp2_ins: cm.n_instrs
                   //     // tmp2_ins.instr = .call
-                  //     // tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                  //     // tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                   //     // append(&tmp_ins.params, tmp2_ins)
                   //     // yes = true
                   //   }
                   // }
                 }
                 if !yes {
-                  fmt.eprintln("get ur shit together wtf is", s)
+                  fmt.eprintln("1 get ur shit together wtf is", s)
                   os.exit(1)
                 }
                 append(&ins.params, tmp_ins)
 
               case '+':
-                tmp_ins: n_instrs
+                tmp_ins: cm.n_instrs
                 tmp_ins.instr = .add
                 get_token(&l)
                 if l.token != auto_cast CLEX.charlit &&
@@ -179,12 +151,12 @@ parse :: proc(file_path: []string) -> []n_instrs {
                   tmp_ins.val = l.int_number
                 case CLEX.id:
                   yes := false
-                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
                   for n in instrs {
                     if n.name == s {
-                      tmp2_ins: n_instrs
+                      tmp2_ins: cm.n_instrs
                       tmp2_ins.instr = .load
-                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                       append(&tmp_ins.params, tmp2_ins)
                       yes = true
                     }
@@ -193,16 +165,16 @@ parse :: proc(file_path: []string) -> []n_instrs {
                     // for f in fns {
                     //   if f.name == s {
                     //     get_and_expect_and_assert(&l, '(')
-                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins: cm.n_instrs
                     //     tmp2_ins.instr = .call
-                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                     //     append(&tmp_ins.params, tmp2_ins)
                     //     yes = true
                     //   }
                     // }
                   }
                   if !yes {
-                    fmt.eprintln("get ur shit together wtf is", s)
+                    fmt.eprintln("2 get ur shit together wtf is", s)
                     os.exit(1)
                   }
 
@@ -212,7 +184,7 @@ parse :: proc(file_path: []string) -> []n_instrs {
 
                 append(&ins.params, tmp_ins)
               case '-':
-                tmp_ins: n_instrs
+                tmp_ins: cm.n_instrs
                 tmp_ins.instr = .sub
                 get_token(&l)
                 if l.token != auto_cast CLEX.charlit &&
@@ -226,12 +198,12 @@ parse :: proc(file_path: []string) -> []n_instrs {
                   tmp_ins.val = l.int_number
                 case CLEX.id:
                   yes := false
-                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
                   for n in instrs {
                     if n.name == s {
-                      tmp2_ins: n_instrs
+                      tmp2_ins: cm.n_instrs
                       tmp2_ins.instr = .load
-                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                       append(&tmp_ins.params, tmp2_ins)
                       yes = true
                     }
@@ -240,16 +212,16 @@ parse :: proc(file_path: []string) -> []n_instrs {
                     // for f in fns {
                     //   if f.name == s {
                     //     get_and_expect_and_assert(&l, '(')
-                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins: cm.n_instrs
                     //     tmp2_ins.instr = .call
-                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                     //     append(&tmp_ins.params, tmp2_ins)
                     //     yes = true
                     //   }
                     // }
                   }
                   if !yes {
-                    fmt.eprintln("get ur shit together wtf is", s)
+                    fmt.eprintln("3 get ur shit together wtf is", s)
                     os.exit(1)
                   }
 
@@ -259,7 +231,7 @@ parse :: proc(file_path: []string) -> []n_instrs {
 
                 append(&ins.params, tmp_ins)
               case '*':
-                tmp_ins: n_instrs
+                tmp_ins: cm.n_instrs
                 tmp_ins.instr = .mult
                 get_token(&l)
                 if l.token != auto_cast CLEX.charlit &&
@@ -273,12 +245,12 @@ parse :: proc(file_path: []string) -> []n_instrs {
                   tmp_ins.val = l.int_number
                 case CLEX.id:
                   yes := false
-                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
                   for n in instrs {
                     if n.name == s {
-                      tmp2_ins: n_instrs
+                      tmp2_ins: cm.n_instrs
                       tmp2_ins.instr = .load
-                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                       append(&tmp_ins.params, tmp2_ins)
                       yes = true
                     }
@@ -287,16 +259,16 @@ parse :: proc(file_path: []string) -> []n_instrs {
                     // for f in fns {
                     //   if f.name == s {
                     //     get_and_expect_and_assert(&l, '(')
-                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins: cm.n_instrs
                     //     tmp2_ins.instr = .call
-                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                     //     append(&tmp_ins.params, tmp2_ins)
                     //     yes = true
                     //   }
                     // }
                   }
                   if !yes {
-                    fmt.eprintln("get ur shit together wtf is", s)
+                    fmt.eprintln("4 get ur shit together wtf is", s)
                     os.exit(1)
                   }
 
@@ -307,7 +279,7 @@ parse :: proc(file_path: []string) -> []n_instrs {
 
                 append(&ins.params, tmp_ins)
               case '/':
-                tmp_ins: n_instrs
+                tmp_ins: cm.n_instrs
                 tmp_ins.instr = .div
                 get_token(&l)
                 if l.token != auto_cast CLEX.charlit &&
@@ -321,12 +293,12 @@ parse :: proc(file_path: []string) -> []n_instrs {
                   tmp_ins.val = l.int_number
                 case CLEX.id:
                   yes := false
-                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
                   for n in instrs {
                     if n.name == s {
-                      tmp2_ins: n_instrs
+                      tmp2_ins: cm.n_instrs
                       tmp2_ins.instr = .load
-                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                       append(&tmp_ins.params, tmp2_ins)
                       yes = true
                     }
@@ -335,16 +307,16 @@ parse :: proc(file_path: []string) -> []n_instrs {
                     // for f in fns {
                     //   if f.name == s {
                     //     get_and_expect_and_assert(&l, '(')
-                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins: cm.n_instrs
                     //     tmp2_ins.instr = .call
-                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                     //     append(&tmp_ins.params, tmp2_ins)
                     //     yes = true
                     //   }
                     // }
                   }
                   if !yes {
-                    fmt.eprintln("get ur shit together wtf is", s)
+                    fmt.eprintln("5 get ur shit together wtf is", s)
                     os.exit(1)
                   }
 
@@ -382,12 +354,12 @@ parse :: proc(file_path: []string) -> []n_instrs {
 
         } else if strings.string_from_ptr(l.string, auto_cast l.string_len) == "syscall" {
           num := 0
-          ins: n_instrs
+          ins: cm.n_instrs
           ins.instr = .syscall
           get_and_expect_and_assert(&l, '(')
           get_token(&l)
           for l.token != ')' {
-            tmp_ins: n_instrs
+            tmp_ins: cm.n_instrs
             tmp_ins.type_num = 1
             switch auto_cast l.token {
             case CLEX.intlit, CLEX.charlit:
@@ -400,7 +372,7 @@ parse :: proc(file_path: []string) -> []n_instrs {
               for n in instrs {
                 if n.name == s && n.instr == .store {
                   tmp_ins.instr = .load
-                  tmp_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                  tmp_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                   tmp_ins.type_num = n.type_num
                   if n.type_num > 1 {
                     get_and_expect_and_assert(&l, '[')
@@ -422,7 +394,7 @@ parse :: proc(file_path: []string) -> []n_instrs {
               }
 
               if !yes {
-                fmt.eprintln("get ur shit together wtf is", s)
+                fmt.eprintln("6 get ur shit together wtf is", s)
                 os.exit(1)
               }
 
@@ -443,7 +415,7 @@ parse :: proc(file_path: []string) -> []n_instrs {
         } else {   // VAR ASSIGNMENT OTHER THAN DECLARING
           s := strings.string_from_ptr(l.string, auto_cast l.string_len)
           yes2 := false
-          ins: n_instrs
+          ins: cm.n_instrs
           for instr in instrs {
             if instr.name == s {
               ins.name = instr.name
@@ -466,21 +438,21 @@ parse :: proc(file_path: []string) -> []n_instrs {
             for l.token != ';' {
               switch auto_cast l.token {
               case CLEX.intlit, CLEX.charlit:
-                tmp_ins: n_instrs
+                tmp_ins: cm.n_instrs
                 tmp_ins.instr = .push
                 tmp_ins.val = l.int_number
                 append(&ins.params, tmp_ins)
               case CLEX.id:
-                tmp_ins: n_instrs
+                tmp_ins: cm.n_instrs
                 // tmp_ins.instr = .push
 
                 yes := false
-                s := clone_ptr_string(l.string, auto_cast l.string_len)
+                s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
                 for n in instrs {
-                  if n.name == s && n.instr == n_instrs_enum.store {
-                    // tmp2_ins: n_instrs
+                  if n.name == s && n.instr == cm.n_instrs_enum.store {
+                    // tmp2_ins: cm.n_instrs
                     tmp_ins.instr = .load
-                    tmp_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    tmp_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                     // append(&tmp_ins.params, tmp2_ins)
                     yes = true
                   }
@@ -490,22 +462,22 @@ parse :: proc(file_path: []string) -> []n_instrs {
                   //   if f.name == s {
                   //     get_and_expect_and_assert(&l, '(')
                   //     fmt.assertf(false, "not implemented function calling")
-                  //     // tmp2_ins: n_instrs
+                  //     // tmp2_ins: cm.n_instrs
                   //     // tmp2_ins.instr = .call
-                  //     // tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                  //     // tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                   //     // append(&tmp_ins.params, tmp2_ins)
                   //     // yes = true
                   //   }
                   // }
                 }
                 if !yes {
-                  fmt.eprintln("get ur shit together wtf is", s)
+                  fmt.eprintln("7 get ur shit together wtf is", s)
                   os.exit(1)
                 }
                 append(&ins.params, tmp_ins)
 
               case '+':
-                tmp_ins: n_instrs
+                tmp_ins: cm.n_instrs
                 tmp_ins.instr = .add
                 get_token(&l)
                 if l.token != auto_cast CLEX.charlit &&
@@ -519,12 +491,12 @@ parse :: proc(file_path: []string) -> []n_instrs {
                   tmp_ins.val = l.int_number
                 case CLEX.id:
                   yes := false
-                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
                   for n in instrs {
                     if n.name == s {
-                      tmp2_ins: n_instrs
+                      tmp2_ins: cm.n_instrs
                       tmp2_ins.instr = .load
-                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                       append(&tmp_ins.params, tmp2_ins)
                       yes = true
                     }
@@ -533,16 +505,16 @@ parse :: proc(file_path: []string) -> []n_instrs {
                     // for f in fns {
                     //   if f.name == s {
                     //     get_and_expect_and_assert(&l, '(')
-                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins: cm.n_instrs
                     //     tmp2_ins.instr = .call
-                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                     //     append(&tmp_ins.params, tmp2_ins)
                     //     yes = true
                     //   }
                     // }
                   }
                   if !yes {
-                    fmt.eprintln("get ur shit together wtf is", s)
+                    fmt.eprintln("8 get ur shit together wtf is", s)
                     os.exit(1)
                   }
 
@@ -552,7 +524,7 @@ parse :: proc(file_path: []string) -> []n_instrs {
 
                 append(&ins.params, tmp_ins)
               case '-':
-                tmp_ins: n_instrs
+                tmp_ins: cm.n_instrs
                 tmp_ins.instr = .sub
                 get_token(&l)
                 if l.token != auto_cast CLEX.charlit &&
@@ -566,12 +538,12 @@ parse :: proc(file_path: []string) -> []n_instrs {
                   tmp_ins.val = l.int_number
                 case CLEX.id:
                   yes := false
-                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
                   for n in instrs {
                     if n.name == s {
-                      tmp2_ins: n_instrs
+                      tmp2_ins: cm.n_instrs
                       tmp2_ins.instr = .load
-                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                       append(&tmp_ins.params, tmp2_ins)
                       yes = true
                     }
@@ -580,16 +552,16 @@ parse :: proc(file_path: []string) -> []n_instrs {
                     // for f in fns {
                     //   if f.name == s {
                     //     get_and_expect_and_assert(&l, '(')
-                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins: cm.n_instrs
                     //     tmp2_ins.instr = .call
-                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                     //     append(&tmp_ins.params, tmp2_ins)
                     //     yes = true
                     //   }
                     // }
                   }
                   if !yes {
-                    fmt.eprintln("get ur shit together wtf is", s)
+                    fmt.eprintln("9 get ur shit together wtf is", s)
                     os.exit(1)
                   }
 
@@ -599,7 +571,7 @@ parse :: proc(file_path: []string) -> []n_instrs {
 
                 append(&ins.params, tmp_ins)
               case '*':
-                tmp_ins: n_instrs
+                tmp_ins: cm.n_instrs
                 tmp_ins.instr = .mult
                 get_token(&l)
                 if l.token != auto_cast CLEX.charlit &&
@@ -613,12 +585,12 @@ parse :: proc(file_path: []string) -> []n_instrs {
                   tmp_ins.val = l.int_number
                 case CLEX.id:
                   yes := false
-                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
                   for n in instrs {
                     if n.name == s {
-                      tmp2_ins: n_instrs
+                      tmp2_ins: cm.n_instrs
                       tmp2_ins.instr = .load
-                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                       append(&tmp_ins.params, tmp2_ins)
                       yes = true
                     }
@@ -627,16 +599,16 @@ parse :: proc(file_path: []string) -> []n_instrs {
                     // for f in fns {
                     //   if f.name == s {
                     //     get_and_expect_and_assert(&l, '(')
-                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins: cm.n_instrs
                     //     tmp2_ins.instr = .call
-                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                     //     append(&tmp_ins.params, tmp2_ins)
                     //     yes = true
                     //   }
                     // }
                   }
                   if !yes {
-                    fmt.eprintln("get ur shit together wtf is", s)
+                    fmt.eprintln("10 get ur shit together wtf is", s)
                     os.exit(1)
                   }
 
@@ -647,7 +619,7 @@ parse :: proc(file_path: []string) -> []n_instrs {
 
                 append(&ins.params, tmp_ins)
               case '/':
-                tmp_ins: n_instrs
+                tmp_ins: cm.n_instrs
                 tmp_ins.instr = .div
                 get_token(&l)
                 if l.token != auto_cast CLEX.charlit &&
@@ -661,12 +633,12 @@ parse :: proc(file_path: []string) -> []n_instrs {
                   tmp_ins.val = l.int_number
                 case CLEX.id:
                   yes := false
-                  s := clone_ptr_string(l.string, auto_cast l.string_len)
+                  s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
                   for n in instrs {
                     if n.name == s {
-                      tmp2_ins: n_instrs
+                      tmp2_ins: cm.n_instrs
                       tmp2_ins.instr = .load
-                      tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                      tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                       append(&tmp_ins.params, tmp2_ins)
                       yes = true
                     }
@@ -675,16 +647,16 @@ parse :: proc(file_path: []string) -> []n_instrs {
                     // for f in fns {
                     //   if f.name == s {
                     //     get_and_expect_and_assert(&l, '(')
-                    //     tmp2_ins: n_instrs
+                    //     tmp2_ins: cm.n_instrs
                     //     tmp2_ins.instr = .call
-                    //     tmp2_ins.name = clone_ptr_string(l.string, auto_cast l.string_len)
+                    //     tmp2_ins.name = cm.clone_ptr_string(l.string, auto_cast l.string_len)
                     //     append(&tmp_ins.params, tmp2_ins)
                     //     yes = true
                     //   }
                     // }
                   }
                   if !yes {
-                    fmt.eprintln("get ur shit together wtf is", s)
+                    fmt.eprintln("11 get ur shit together wtf is", s)
                     os.exit(1)
                   }
 

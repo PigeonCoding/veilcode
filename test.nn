@@ -5,5 +5,4 @@ let arr: [10]int;
 
 arr[5] = a;
 
-let sys_exit: int = 60;
 syscall(sys_exit, arr[5]);
