@@ -1,4 +1,4 @@
-package naned_fasm_x86_64_linux
+package naned_fasm_x86_64_gcc_linux
 
 import "core:os"
 import "core:fmt"
@@ -20,10 +20,10 @@ import cm "../../common"
 
 generate :: proc(instrs: []cm.n_instrs) -> string {
   res: strings.Builder
-  cm.builder_append_string(&res, "format ELF64 executable\n")
+  cm.builder_append_string(&res, "format ELF64\n")
 
-  // cm.builder_append_string(&res, "section \".text\" executable\n")
-  // cm.builder_append_string(&res, "public main\n")
+  cm.builder_append_string(&res, "section \".text\" executable\n")
+  cm.builder_append_string(&res, "public main\n")
   // cm.builder_append_string(&res, "public _start\n")
   cm.builder_append_string(&res, "main:\n")
   // cm.builder_append_string(&res, "_start:\n")
@@ -35,7 +35,7 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
   cm.builder_append_string(&res, "  mov rdi, 0\n")
   cm.builder_append_string(&res, "  syscall\n")
 
-  // cm.builder_append_string(&res, "section \".data\"\n")
+  cm.builder_append_string(&res, "section \".data\"\n")
   for instr in instrs {
     if instr.instr == .store {
       cm.builder_append_string(&res, instr.name)
