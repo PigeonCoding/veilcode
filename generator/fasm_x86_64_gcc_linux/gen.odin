@@ -143,8 +143,8 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
         fmt.eprintln("please switch to fasm_x84_64_linux if possible")
         os.exit(1)
       }
-      // fmt.sbprintf(b, "  mov r10, QWORD [%s + %d]\n", instr.name, instr.offset)
-      // fmt.sbprintf(b, "  push QWORD[r10]\n")
+    // fmt.sbprintf(b, "  mov r10, QWORD [%s + %d]\n", instr.name, instr.offset)
+    // fmt.sbprintf(b, "  push QWORD[r10]\n")
     case .assign:
       if auto_cast instr.offset > instr.type_num - 1 {
         fmt.eprintln(
@@ -162,6 +162,7 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
         fmt.sbprintf(b, "  pop %s\n", syscall_reg_list[arg_num - i - 1])
       }
       fmt.sbprintf(b, "  syscall\n")
+    case .nothing:
     case:
       fmt.print("curent state: \n", string(b.buf[:]))
       fmt.println("-------------------------------------------")

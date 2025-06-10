@@ -7,7 +7,7 @@ import "core:strings"
 
 // NOTE: linux x86_64 calling convention
 // ints  : RAX, RDI, RSI, RDX, RCX, R8, and R9 
-// floats: XMM0 to XMM7
+// floats: XMM0 to XMM7 (128 bit)
 // ret   : RAX for int XMM0 for float
 
 // NOTE: sizes for x86_64
@@ -166,6 +166,7 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
         fmt.sbprintf(b, "  pop %s\n", syscall_reg_list[arg_num - i - 1])
       }
       fmt.sbprintf(b, "  syscall\n")
+    case .nothing:
     case:
       fmt.print("curent state: \n", string(b.buf[:]))
       fmt.println("-------------------------------------------")

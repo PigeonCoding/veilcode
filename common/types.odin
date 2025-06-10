@@ -14,6 +14,7 @@ n_instrs_enum :: enum {
   div,
   jmp,
   deref,
+  nothing,
 }
 
 n_types :: enum {

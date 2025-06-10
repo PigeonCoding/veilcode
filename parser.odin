@@ -237,6 +237,16 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
       fmt.eprintln("wat is hapening", l.token)
     }
 
+  case '(':
+    ins.instr = .nothing
+    get_token(l)
+    for l.token != ')' {
+      append(&ins.params, get_pushed_shit(instrs, l))
+      get_token(l)
+      // fmt.println(ins)
+      // os.exit(1)
+    }
+
   case:
     loc: lex_location
     get_location(l, l.where_firstchar, &loc)
