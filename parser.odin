@@ -23,7 +23,7 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
   switch auto_cast l.token {
   case CLEX.intlit, CLEX.charlit:
     ins.instr = .push
-    ins.val = l.int_number
+    ins.val = auto_cast l.int_number
   case '&':
     if p, success := peek(l^); p == auto_cast CLEX.id && success {
       get_token(l)
@@ -103,7 +103,7 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
     }
     switch auto_cast l.token {
     case CLEX.intlit, CLEX.charlit:
-      ins.val = l.int_number
+      ins.val = auto_cast l.int_number
     case CLEX.id:
       yes := false
       s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
@@ -139,7 +139,7 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
     }
     switch auto_cast l.token {
     case CLEX.intlit, CLEX.charlit:
-      ins.val = l.int_number
+      ins.val = auto_cast l.int_number
     case CLEX.id:
       yes := false
       s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
@@ -175,7 +175,7 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
     }
     switch auto_cast l.token {
     case CLEX.intlit, CLEX.charlit:
-      ins.val = l.int_number
+      ins.val = auto_cast l.int_number
     case CLEX.id:
       yes := false
       s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
@@ -210,7 +210,7 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
     }
     switch auto_cast l.token {
     case CLEX.intlit, CLEX.charlit:
-      ins.val = l.int_number
+      ins.val = auto_cast l.int_number
     case CLEX.id:
       yes := false
       s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
