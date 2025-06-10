@@ -1,5 +1,10 @@
-# veilcode a compiled programming language
+# veilcode is a compiled programming language
 ## how to build
+### prerequisite
+- fasm
+- cc (gcc)
+- odin
+
 ```console
 $ make release
 ```
