@@ -13,4 +13,4 @@ arr[10] = 'l';
 arr[11] = 'd';
 arr[12] = 10;
 
-syscall(sys_write, 1, &arr[0], 13);
+syscall(sys_write, stdout, &arr[0], 13);

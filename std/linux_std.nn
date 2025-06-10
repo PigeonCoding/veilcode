@@ -1,21 +1,10 @@
-// let stdin: char = 0;
-// let stdout: char = 1;
-// let stderr: char = 2;
-// 
-// let sys_read: int = 0;
+let stdin: int = 0;
+let stdout: int = 1;
+let stderr: int = 2;
+//-------------------------
+let sys_read: int = 0;
 let sys_write: int = 1;
-// let sys_open: int = 2;
-// let sys_close: int = 3;
-// let sys_stat: int = 4;
-// let sys_fstat: int = 5;
-// let sys_lstat: int = 6;
-// let sys_poll: int = 7;
-// let sys_lseek: int = 8;
-// let sys_mmap: int = 9;
-// let sys_mprotect: int = 10;
-// let sys_munmap: int = 11;
-// let sys_brk: int = 12;
-// let sys_rt_sigaction: int = 13;
-// let sys_rt_sigprocmask: int = 14;
-// let sys_rt_sigreturn: int = 15;
+let sys_open: int = 2;
+let sys_close: int = 3;
+// TODO: put the rest https://blog.rchapman.org/posts/Linux_System_Call_Table_for_x86_64/
 let sys_exit: int = 60;
