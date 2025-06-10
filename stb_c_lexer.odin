@@ -1,9 +1,10 @@
+// TODO: rewrite my oen version it seems buggy for some reason
 package naned
 
 import "core:c"
 import "core:fmt"
 
-when ODIN_OS == .Linux do foreign import stb_c_lexer "thirdparty/stb_c_lexer.o"
+when ODIN_OS == .Linux do foreign import stb_c_lexer "thirdparty/stb_c_lexer/stb_c_lexer_linux.o"
 
 CLEX :: enum c.long {
   eof = 256,

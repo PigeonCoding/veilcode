@@ -1,4 +1,4 @@
 out
-e2e.log
-thirdparty/stb_c_lexer.o
+thirdparty/stb_c_lexer/*
+!thirdparty/stb_c_lexer/stb_c_lexer.h
 naned

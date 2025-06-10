@@ -1,12 +1,14 @@
-let a: char = (45 - 30);
-let b: int;
+// let a: char = (45 - 30);
+// let b: int;
 
-let arr: [10]int;
 
-arr[5] = &a;
-b = a;
 
-syscall(sys_exit, (arr[5]* + 1));
+
+
+// arr[5] = &a;
+// b = a;
+
+// syscall(sys_exit, (arr[5]* + 1));
 
 // if ( a == 1 ) {
 //   syscall(sys_exit, arr);
@@ -15,3 +17,4 @@ syscall(sys_exit, (arr[5]* + 1));
 // } else {
 //   syscall(sys_exit, 2);
 // }
+

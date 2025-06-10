@@ -263,6 +263,20 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
   return ins
 }
 
+stb_c_lexer_charlit_workaround :: proc(buf: []byte) -> []byte {
+  str: strings.Builder
+
+  for b, u in buf {
+    append(&str.buf, b)
+    if b == '\'' && (buf[u + 1] == ';' || buf[u + 1] == ')') {
+      append(&str.buf, ' ')
+    }
+  }
+  // fmt.println(string(str.buf[:]))
+
+  return str.buf[:]
+}
+
 parse :: proc(file_path: []string) -> []cm.n_instrs {
   // fns: [dynamic]fn
   // defer delete(fns)
@@ -270,17 +284,18 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
 
   for file in file_path {
     l: lexer
-    lex_store: []c.char = make([]c.char, 100)
+    lex_store: []c.char = make([]c.char, 200)
 
     buf, err := cm.read_file(file)
     if err != nil {
       fmt.eprintfln("got error {}", err)
     }
     // TODO: maybe fix stb_c_lexer to not have that problem?
-    strings.replace_all(string(buf), "')", "' )")
-    strings.replace_all(string(buf), "';", "' ;")
 
-    init(&l, &buf[0], nil, &lex_store[0], auto_cast len(lex_store))
+
+    patched_buf := stb_c_lexer_charlit_workaround(buf)
+
+    init(&l, &patched_buf[0], nil, &lex_store[0], auto_cast len(lex_store))
 
 
     for get_token(&l) != 0 && l.token != 0 {
@@ -316,7 +331,7 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
               get_token(&l)
             }
           }
-
+          
           append(&instrs, ins)
 
         } else if strings.string_from_ptr(l.string, auto_cast l.string_len) == "syscall" {
