@@ -1,5 +1,5 @@
 // TODO: rewrite my oen version it seems buggy for some reason
-package naned
+package veilcode
 
 import "core:c"
 import "core:fmt"

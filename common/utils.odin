@@ -1,4 +1,4 @@
-package naned_common
+package veilcode_common
 
 import "core:fmt"
 import "core:os"

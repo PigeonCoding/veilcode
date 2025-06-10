@@ -1,4 +1,4 @@
-package naned
+package veilcode
 
 import cm "./common"
 import "core:c"
@@ -80,7 +80,7 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lexer) -> cm.n_instrs {
       }
     }
     if !yes {
-      fmt.assertf(false, "function calling not implemented yet")
+      fmt.assertf(false, "function calling not implemented yet or unknown var")
     }
     if !yes {
       fmt.eprintln("1 get ur shit together wtf is", s)

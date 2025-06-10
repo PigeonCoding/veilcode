@@ -1,4 +1,4 @@
-package naned
+package veilcode
 
 import cm "./common"
 import f86_64glinux "./generator/fasm_x86_64_gcc_linux"
@@ -25,6 +25,8 @@ exec_and_run_sync :: proc(cmd: []string) -> Maybe(os2.Error) {
   procc.env = nil
   procc.working_dir = ""
 
+  fmt.println("[CMD]:", cmd)
+
   procc.command = cmd
   p, err := os2.process_start(procc)
   if err != nil do return err
@@ -36,8 +38,12 @@ exec_and_run_sync :: proc(cmd: []string) -> Maybe(os2.Error) {
   return nil
 }
 
-BUILD_FOLDER :: "./out/"
+file_out := "nn_out"
 
+prt_usage :: proc(program_name: string, fl_cont: ^(fg.flag_container)) {
+  fmt.println("Usage:", program_name, "file.nn <flags>")
+  fg.print_usage(fl_cont)
+}
 
 main :: proc() {
 
@@ -53,6 +59,7 @@ main :: proc() {
     "sets the desired target (-target list for all the targets)",
   )
   fg.add_flag(&fl_cont, "h", false, "shows this message")
+  fg.add_flag(&fl_cont, "out", "", "sets the name dor the output file")
 
 
   fg.check_flags(&fl_cont)
@@ -62,18 +69,23 @@ main :: proc() {
   for f in fl_cont.parsed_flags {
     switch f.flag {
     case "h":
-      fmt.println("Usage:", fl_cont.remaining[0], "file.nn <flags>")
-      fg.print_usage(&fl_cont)
+      prt_usage(program_name, &fl_cont)
+      os.exit(0)
     case "target":
       switch f.value {
       case "list":
         for t in reflect.enum_field_names(target_enum) {
           if t != "none" do fmt.println(t)
         }
+        os.exit(0)
       case "fasm_x86_64_linux":
         target = .fasm_x86_64_linux
       }
+
+    case "out":
+      file_out = f.value.(string)
     }
+
   }
 
   files_to_parse: [dynamic]string
@@ -86,11 +98,25 @@ main :: proc() {
   }
 
   for n in fl_cont.remaining {
+    if n == "---" do break
+
+    if strings.starts_with(n, "-") {
+      fmt.eprintln("unknown flag", n)
+      prt_usage(program_name, &fl_cont)
+      os.exit(1)
+    }
+
     if strings.ends_with(n, ".nn") {
       append(&files_to_parse, n)
     } else {
       fmt.eprintln("unknown file extention for", n, "skipping")
     }
+  }
+
+  if len(files_to_parse) == 1 {
+    fmt.eprintln("no file provided")
+    prt_usage(program_name, &fl_cont)
+    os.exit(1)
   }
 
   instrs := parse(files_to_parse[:])
@@ -114,7 +140,7 @@ main :: proc() {
   delete(to_write)
 
   // TODO: get output file from argv
-  res := os.write_entire_file_or_err("./out/test.asm", b.buf[:])
+  res := os.write_entire_file_or_err(file_out, b.buf[:])
   if res != nil {
     fmt.eprintln(res)
     os.exit(1)
@@ -125,7 +151,8 @@ main :: proc() {
   case .none:
     fmt.assertf(false, "shouldn't happen")
   case .fasm_x86_64_linux:
-    if exec_and_run_sync([]string{"fasm", "./out/test.asm"}) != nil do os.exit(1)
+    if exec_and_run_sync([]string{"fasm", file_out}) != nil do os.exit(1)
+    if exec_and_run_sync([]string{"chmod", "+x", file_out}) != nil do os.exit(1)
   // case .fasm_x86_64_gcc_linux:
   //   if exec_and_run_sync([]string{"fasm", "./out/test.asm"}) != nil do os.exit(1)
   //   if exec_and_run_sync([]string{"cc", "./out/test.o", "-g", "-no-pie", "-o", "out/test"}) != nil do os.exit(1)

@@ -18,3 +18,4 @@ let sys_write: int = 1;
 // let sys_rt_sigaction: int = 13;
 // let sys_rt_sigprocmask: int = 14;
 // let sys_rt_sigreturn: int = 15;
+let sys_exit: int = 60;

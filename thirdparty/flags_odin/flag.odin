@@ -50,10 +50,11 @@ check_flags :: proc(container: ^flag_container) {
       break
     }
 
+    yes := false
     if strings.starts_with(os.args[arg_i], "-") {
       for &f in container.private_flag_list {
         if os.args[arg_i][1:] == f.flag {
-          yes := false
+          yes = false
           switch v in f.value {
           case bool:
             // fmt.println("yes")
@@ -72,11 +73,17 @@ check_flags :: proc(container: ^flag_container) {
 
           if yes do append(&ff, &f)
 
-        }
+        } 
+        // else {
+        //   append(&rem, os.args[arg_i])
+        // }
       }
-    } else {
-      append(&rem, os.args[arg_i])
-    }
+    } 
+    // else {
+    //   append(&rem, os.args[arg_i])
+    // }
+
+    if !yes do append(&rem, os.args[arg_i])
     arg_i += 1
   }
 
@@ -108,7 +115,12 @@ print_usage :: proc(container: ^flag_container) {
       t = "(string)"
     }
 
-    fmt.printfln("%-*.s: {}", max_len + 1 + 9, strings.concatenate({"-", f.flag, t}), f.description)
+    fmt.printfln(
+      "%-*.s: {}",
+      max_len + 1 + 9,
+      strings.concatenate({"-", f.flag, t}),
+      f.description,
+    )
   }
 }
 

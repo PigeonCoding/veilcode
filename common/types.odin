@@ -1,4 +1,4 @@
-package naned_common
+package veilcode_common
 
 n_instrs_enum :: enum {
   nun,

@@ -1,4 +1,4 @@
-package naned_fasm_x86_64_gcc_linux
+package veilcode_fasm_x86_64_gcc_linux
 
 import cm "../../common"
 import "core:fmt"

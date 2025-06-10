@@ -1,9 +1,7 @@
-naned: stb_c_lexer.o main.odin parser.odin stb_c_lexer.odin
-	odin build . -debug -out:out/naned
+veilcode: stb_c_lexer.o main.odin parser.odin stb_c_lexer.odin
+	odin build . -debug -out:out/veilcode
 stb_c_lexer.o: ./thirdparty/stb_c_lexer/stb_c_lexer.h
 	cc -x c -c -g ./thirdparty/stb_c_lexer/stb_c_lexer.h -o thirdparty/stb_c_lexer/stb_c_lexer_linux.o -DSTB_C_LEXER_IMPLEMENTATION
-naned_c: naned.c
-	cc naned.c -Wall -Wextra -o out/naned
 prt_gcc: prt.asm
 	fasm ./prt.asm
 	mv prt.o ./out/prt_gcc.o
