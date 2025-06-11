@@ -1,8 +1,9 @@
 out/*
-!out/build.odin
+!out/*.odin
 thirdparty/stb_c_lexer/*
 !thirdparty/stb_c_lexer/stb_c_lexer.h
 veilcode
 prt.txt
 print.asm
 wat.txt
+out.exe
