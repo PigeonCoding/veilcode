@@ -1011,7 +1011,7 @@ main :: proc() {
   b: odin_cmd_builder
   b.main_cmd = .build
   b.directory = ".."
-  b.flags.out = "../out/veilgard"
+  b.flags.out = "../out/veilcode"
   b.flags.thread_count = 4
   if DEBUG {
     b.flags.debug = true
