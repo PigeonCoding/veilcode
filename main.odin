@@ -1,8 +1,9 @@
 package veilcode
 
 import cm "./common"
-import f86_64glinux "./generator/fasm_x86_64_gcc_linux"
+import c_linux "./generator/c_linux"
 import f86_64linux "./generator/fasm_x86_64_linux"
+import f86_64tlinux "./generator/fasm_x86_64_tcc_linux"
 import "core:fmt"
 import "core:os"
 import "core:os/os2"
@@ -13,7 +14,8 @@ import fg "thirdparty/flags_odin"
 target_enum :: enum {
   none, // TODO: temporary will remove later when os detection is implemented
   fasm_x86_64_linux,
-  // fasm_x86_64_gcc_linux, broken for now TODO: make work
+  c_linux,
+  fasm_x86_64_tcc_linux, // broken for now TODO: make work
 }
 target: target_enum = .fasm_x86_64_linux
 
@@ -80,6 +82,10 @@ main :: proc() {
         os.exit(0)
       case "fasm_x86_64_linux":
         target = .fasm_x86_64_linux
+      case "c_linux":
+        target = .c_linux
+      case "fasm_x86_64_tcc_linux":
+        target = .fasm_x86_64_tcc_linux
       }
 
     case "out":
@@ -94,7 +100,10 @@ main :: proc() {
     append(&files_to_parse, "std/linux_std.nn")
   case .none:
     fmt.assertf(false, "shouldn't happen")
-  // case .fasm_x86_64_gcc_linux:
+  case .c_linux:
+    append(&files_to_parse, "std/linux_std.nn")
+  case .fasm_x86_64_tcc_linux:
+    append(&files_to_parse, "std/linux_std.nn")
   }
 
   for n in fl_cont.remaining {
@@ -129,17 +138,16 @@ main :: proc() {
     fmt.assertf(false, "shouldn't happen")
   case .fasm_x86_64_linux:
     to_write = f86_64linux.generate(instrs)
-  // case .fasm_x86_64_gcc_linux:
-  //   to_write = f86_64glinux.generate(instrs)
-  //   fmt.println("currently f86_64glinux pointers are kinda broken, my bad")
-  // os.exit(0)
+  case .c_linux:
+    to_write = c_linux.generate(instrs)
+  case .fasm_x86_64_tcc_linux:
+    to_write = f86_64tlinux.generate(instrs)
   }
 
   b: strings.Builder
   cm.builder_append_string(&b, to_write)
   delete(to_write)
 
-  // TODO: get output file from argv
   res := os.write_entire_file_or_err(file_out, b.buf[:])
   if res != nil {
     fmt.eprintln(res)
@@ -151,10 +159,12 @@ main :: proc() {
   case .none:
     fmt.assertf(false, "shouldn't happen")
   case .fasm_x86_64_linux:
-    if exec_and_run_sync([]string{"fasm", file_out}) != nil do os.exit(1)
+    if exec_and_run_sync([]string{"external/fasm_linux", file_out}) != nil do os.exit(1)
     if exec_and_run_sync([]string{"chmod", "+x", file_out}) != nil do os.exit(1)
-  // case .fasm_x86_64_gcc_linux:
-  //   if exec_and_run_sync([]string{"fasm", "./out/test.asm"}) != nil do os.exit(1)
-  //   if exec_and_run_sync([]string{"cc", "./out/test.o", "-g", "-no-pie", "-o", "out/test"}) != nil do os.exit(1)
+  case .c_linux:
+    if exec_and_run_sync([]string{"external/tcc_linux", "-g", file_out, "-o", file_out}) != nil do os.exit(1)
+  case .fasm_x86_64_tcc_linux:
+    if exec_and_run_sync([]string{"external/fasm_linux", file_out}) != nil do os.exit(1)
+    if exec_and_run_sync([]string{"external/tcc_linux", strings.concatenate({file_out, ".o"}), "-g", "-o", file_out}) != nil do os.exit(1)
   }
 }

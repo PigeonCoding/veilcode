@@ -1,19 +1,13 @@
 package veilcode_common
 
+import "core:c"
 import "core:fmt"
+import "core:mem"
 import "core:os"
 import "core:strings"
-import "core:mem"
-import "core:c"
 
 builder_append_string :: proc(b: ^strings.Builder, str: string) {
-  for s in str {
-    if s < 255 do append(&b.buf, auto_cast s)
-    else {
-      fmt.eprintln("there was a non ascii character in the file")
-      os.exit(1)
-    }
-  }
+  fmt.sbprint(b, str)
 }
 
 string_to_type :: proc(s: string) -> n_types {

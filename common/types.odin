@@ -7,7 +7,7 @@ n_instrs_enum :: enum {
   assign,
   load,
   call,
-  syscall,
+  syscall, // TODO: make this a function and just call it probably but still have this maybe?
   add,
   sub,
   mult,

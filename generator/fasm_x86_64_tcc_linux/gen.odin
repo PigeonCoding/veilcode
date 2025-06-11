@@ -7,7 +7,7 @@ import "core:strings"
 
 // NOTE: linux x86_64 calling convention
 // ints  : RAX, RDI, RSI, RDX, RCX, R8, and R9 
-// floats: XMM0 to XMM7
+// floats: XMM0 to XMM7 (128 bit)
 // ret   : RAX for int XMM0 for float
 
 // NOTE: sizes for x86_64
@@ -22,7 +22,7 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
   res: strings.Builder
   cm.builder_append_string(&res, "format ELF64\n")
 
-  cm.builder_append_string(&res, "section \".text\" executable\n")
+  // cm.builder_append_string(&res, "section \".text\" executable\n")
   cm.builder_append_string(&res, "public main\n")
   // cm.builder_append_string(&res, "public _start\n")
   cm.builder_append_string(&res, "main:\n")
@@ -31,11 +31,14 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
 
   generate_instr(instrs, &res)
 
-  cm.builder_append_string(&res, "  mov rax, 60\n")
-  cm.builder_append_string(&res, "  mov rdi, 0\n")
-  cm.builder_append_string(&res, "  syscall\n")
+  // cm.builder_append_string(&res, "  mov rax, 60\n")
+  // cm.builder_append_string(&res, "  mov rdi, 0\n")
+  // cm.builder_append_string(&res, "  syscall\n")
 
-  cm.builder_append_string(&res, "section \".data\"\n")
+  cm.builder_append_string(&res, "  mov rax, 0\n")
+  cm.builder_append_string(&res, "  ret\n")
+
+  // cm.builder_append_string(&res, "section \".data\"\n")
   for instr in instrs {
     if instr.instr == .store {
       cm.builder_append_string(&res, instr.name)
@@ -137,14 +140,6 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
       fmt.sbprintf(b, "  mov rdx, r14\n")
     case .store:
       fmt.sbprintf(b, "  pop QWORD[%s + %d]\n", instr.name, instr.offset)
-    case .deref:
-      {
-        fmt.eprintln("pointers are currently broken :(")
-        fmt.eprintln("please switch to fasm_x84_64_linux if possible")
-        os.exit(1)
-      }
-    // fmt.sbprintf(b, "  mov r10, QWORD [%s + %d]\n", instr.name, instr.offset)
-    // fmt.sbprintf(b, "  push QWORD[r10]\n")
     case .assign:
       if auto_cast instr.offset > instr.type_num - 1 {
         fmt.eprintln(
@@ -154,7 +149,19 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
       }
       fmt.sbprintf(b, "  pop QWORD[%s + %d]\n", instr.name, instr.offset)
     case .load:
-      fmt.sbprintf(b, "  push QWORD[%s + %d]\n", instr.name, instr.offset)
+      brack := []byte{'[', ' '}
+      brack2 := []byte{']', ' '}
+      fmt.sbprintf(
+        b,
+        "  push QWORD%c%s + %d%c\n",
+        brack[cast(int)instr.ptr],
+        instr.name,
+        instr.offset,
+        brack2[cast(int)instr.ptr],
+      )
+    case .deref:
+      fmt.sbprintf(b, "  mov r13, QWORD [%s + %d]\n", instr.name, instr.offset)
+      fmt.sbprintf(b, "  push QWORD[r13]\n")
     case .syscall:
       arg_num := get_arg_num_from_call(instr.params[:])
 
@@ -171,8 +178,5 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
       os.exit(1)
     }
   }
-
-  // fmt.sbprintf(b, ";----------------------\n")
-
 
 }
