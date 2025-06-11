@@ -16,14 +16,14 @@ string_to_type :: proc(s: string) -> n_types {
     return .n_int
   case "char":
     return .n_char
+  case "ptr":
+    return .n_ptr
   // case "string":
   //   return .n_string
   // case "bool":
   //   return .n_bool
   // case "float":
   //   return .n_float
-  // case "void":
-  //   return .n_void
   case:
     return .n_none
   }

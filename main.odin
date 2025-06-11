@@ -50,9 +50,11 @@ prt_usage :: proc(program_name: string, fl_cont: ^(fg.flag_container)) {
 
 main :: proc() {
 
-  if ODIN_OS != .Linux || ODIN_OS != .Windows {
+  if ODIN_OS != .Linux && ODIN_OS != .Windows {
     assert(false, "not implemented for platforms that are not linux yet")
   }
+
+  nostd := false
 
   fl_cont: fg.flag_container
   fg.add_flag(
@@ -63,11 +65,14 @@ main :: proc() {
   )
   fg.add_flag(&fl_cont, "h", false, "shows this message")
   fg.add_flag(&fl_cont, "out", "", "sets the name dor the output file")
+  fg.add_flag(&fl_cont, "nostd", false, "disables the standard lib")
 
 
   fg.check_flags(&fl_cont)
   program_name := fl_cont.remaining[0]
   fl_cont.remaining = fl_cont.remaining[1:]
+
+  // fmt.println(fl_cont)
 
   for f in fl_cont.parsed_flags {
     switch f.flag {
@@ -93,6 +98,8 @@ main :: proc() {
 
     case "out":
       file_out = f.value.(string)
+    case "nostd":
+      nostd = true
     }
 
   }
@@ -108,6 +115,8 @@ main :: proc() {
   case .fasm_x86_64_tcc_linux:
     append(&files_to_parse, "std/linux_std.nn")
   case .c_win64:
+    append(&files_to_parse, "std/linux_std.nn")
+  // nostd = true
   }
 
   for n in fl_cont.remaining {
@@ -126,7 +135,7 @@ main :: proc() {
     }
   }
 
-  if len(files_to_parse) == 1 {
+  if (nostd && len(files_to_parse) == 0) || (!nostd && len(files_to_parse) == 1) {
     fmt.eprintln("no file provided")
     prt_usage(program_name, &fl_cont)
     os.exit(1)

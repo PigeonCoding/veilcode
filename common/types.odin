@@ -19,6 +19,7 @@ n_instrs_enum :: enum {
 
 n_types :: enum {
   n_none,
+  n_ptr,
   n_int,
   n_char,
 }

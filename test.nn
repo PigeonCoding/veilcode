@@ -1,12 +1,8 @@
 let a: char = (45 - 30);
-// let b: int;
 
-let arr: [6]int;
+let arr: [6]ptr;
 arr[5] = &a;
 
-// b = a;
-
-syscall(sys_exit, (arr[5]* + 1));
 
 // if ( a == 1 ) {
 //   syscall(sys_exit, arr);

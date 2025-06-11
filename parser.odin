@@ -331,7 +331,7 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
               get_token(&l)
             }
           }
-          
+
           append(&instrs, ins)
 
         } else if strings.string_from_ptr(l.string, auto_cast l.string_len) == "syscall" {

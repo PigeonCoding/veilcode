@@ -42,7 +42,7 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
       switch instr.type {
       case .n_char:
         fmt.sbprintf(&res, ": db %d dup(0)", instr.type_num)
-      case .n_int:
+      case .n_int, .n_ptr:
         fmt.sbprintf(&res, ": dq %d dup(0)", instr.type_num)
       case .n_none:
         fmt.eprintln(

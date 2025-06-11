@@ -18,6 +18,8 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
         fmt.sbprintf(&s, "  char %s[%d]", instr.name, instr.type_num)
       case .n_int:
         fmt.sbprintf(&s, "  int %s[%d]", instr.name, instr.type_num)
+      case .n_ptr:
+        fmt.sbprintf(&s, "  void* %s[%d]", instr.name, instr.type_num)
       // fmt.sbprintf(&s, "int", instr.type_num)
       case .n_none:
         fmt.eprintln(
@@ -57,6 +59,9 @@ generate_instrs :: proc(instrs: []cm.n_instrs, s: ^strings.Builder) {
     case .push:
       fmt.sbprintf(s, "%d ", ins.val)
     case .load:
+      if ins.ptr {
+        fmt.sbprint(s, "&")
+      }
       fmt.sbprintf(s, "%s[%d] ", ins.name, ins.offset)
     case .add:
       if ins.val != 0 do fmt.sbprintf(s, "+ %d ", ins.val)
@@ -72,6 +77,7 @@ generate_instrs :: proc(instrs: []cm.n_instrs, s: ^strings.Builder) {
       else do fmt.sbprint(s, "/ ")
     case .jmp:
     case .deref:
+      fmt.println(ins)
     case .nothing:
     case .call:
     case .syscall:
