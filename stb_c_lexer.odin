@@ -1,10 +1,11 @@
-// TODO: rewrite my oen version it seems buggy for some reason
+// TODO: rewrite my oen version it seems buggy for some reason also no windows because compiling issues
 package veilcode
 
 import "core:c"
 import "core:fmt"
 
-when ODIN_OS == .Linux do foreign import stb_c_lexer "thirdparty/stb_c_lexer/stb_c_lexer_linux.o"
+when ODIN_OS == .Linux do foreign import stb_c_lexer "thirdparty/stb_c_lexer/stb_c_lexer_linux64.o"
+when ODIN_OS == .Windows do foreign import stb_c_lexer "thirdparty/stb_c_lexer/stb_c_lexer_win64.dll"
 
 CLEX :: enum c.long {
   eof = 256,

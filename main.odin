@@ -15,6 +15,7 @@ target_enum :: enum {
   none, // TODO: temporary will remove later when os detection is implemented
   fasm_x86_64_linux,
   c_linux,
+  c_win64,
   fasm_x86_64_tcc_linux, // broken for now TODO: make work
 }
 target: target_enum = .fasm_x86_64_linux
@@ -49,7 +50,7 @@ prt_usage :: proc(program_name: string, fl_cont: ^(fg.flag_container)) {
 
 main :: proc() {
 
-  if ODIN_OS != .Linux {
+  if ODIN_OS != .Linux || ODIN_OS != .Windows {
     assert(false, "not implemented for platforms that are not linux yet")
   }
 
@@ -86,6 +87,8 @@ main :: proc() {
         target = .c_linux
       case "fasm_x86_64_tcc_linux":
         target = .fasm_x86_64_tcc_linux
+      case "c_win64":
+        target = .c_win64
       }
 
     case "out":
@@ -104,6 +107,7 @@ main :: proc() {
     append(&files_to_parse, "std/linux_std.nn")
   case .fasm_x86_64_tcc_linux:
     append(&files_to_parse, "std/linux_std.nn")
+  case .c_win64:
   }
 
   for n in fl_cont.remaining {
@@ -142,6 +146,8 @@ main :: proc() {
     to_write = c_linux.generate(instrs)
   case .fasm_x86_64_tcc_linux:
     to_write = f86_64tlinux.generate(instrs)
+  case .c_win64:
+    to_write = c_linux.generate(instrs)
   }
 
   b: strings.Builder
@@ -166,5 +172,8 @@ main :: proc() {
   case .fasm_x86_64_tcc_linux:
     if exec_and_run_sync([]string{"external/fasm_linux", file_out}) != nil do os.exit(1)
     if exec_and_run_sync([]string{"external/tcc_linux", strings.concatenate({file_out, ".o"}), "-g", "-o", file_out}) != nil do os.exit(1)
+  case .c_win64:
+    fmt.assertf(false, "will have to rewrite stb_c_lexer in odin fot it to work")
+    if exec_and_run_sync([]string{"external/tcc_win64.exe", file_out, "-g", "-o", file_out}) != nil do os.exit(1)
   }
 }
