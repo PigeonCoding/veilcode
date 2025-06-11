@@ -291,7 +291,9 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
       fmt.eprintfln("got error {}", err)
     }
     // TODO: maybe fix stb_c_lexer to not have that problem?
-
+    if len(buf) == 0 {
+      fmt.eprintln("file", file, "is empty")
+    }
 
     patched_buf := stb_c_lexer_charlit_workaround(buf)
 

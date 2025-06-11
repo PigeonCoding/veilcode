@@ -4,6 +4,7 @@ import cm "./common"
 import c_linux "./generator/c_linux"
 import f86_64linux "./generator/fasm_x86_64_linux"
 import f86_64tlinux "./generator/fasm_x86_64_tcc_linux"
+import bd "./out"
 import "core:fmt"
 import "core:os"
 import "core:os/os2"
@@ -20,28 +21,8 @@ target_enum :: enum {
 }
 target: target_enum = .fasm_x86_64_linux
 
-exec_and_run_sync :: proc(cmd: []string) -> Maybe(os2.Error) {
-
-  procc: os2.Process_Desc
-  procc.stderr = os2.stderr
-  procc.stdout = os2.stdout
-  procc.env = nil
-  procc.working_dir = ""
-
-  fmt.println("[CMD]:", cmd)
-
-  procc.command = cmd
-  p, err := os2.process_start(procc)
-  if err != nil do return err
-  _, err = os2.process_wait(p)
-  if err != nil do return err
-  err = os2.process_close(p)
-  if err != nil do return err
-
-  return nil
-}
-
 file_out := "nn_out"
+root_path := "."
 
 prt_usage :: proc(program_name: string, fl_cont: ^(fg.flag_container)) {
   fmt.println("Usage:", program_name, "file.nn <flags>")
@@ -66,6 +47,7 @@ main :: proc() {
   fg.add_flag(&fl_cont, "h", false, "shows this message")
   fg.add_flag(&fl_cont, "out", "", "sets the name dor the output file")
   fg.add_flag(&fl_cont, "nostd", false, "disables the standard lib")
+  fg.add_flag(&fl_cont, "root_path", "", "sets a custom path for the root folder of veilcode")
 
 
   fg.check_flags(&fl_cont)
@@ -100,23 +82,25 @@ main :: proc() {
       file_out = f.value.(string)
     case "nostd":
       nostd = true
+    case "root_path":
+      root_path = f.value.(string)
     }
 
   }
 
   files_to_parse: [dynamic]string
   switch target {
-  case .fasm_x86_64_linux:
-    append(&files_to_parse, "std/linux_std.nn")
   case .none:
     fmt.assertf(false, "shouldn't happen")
+  case .fasm_x86_64_linux:
+    append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
   case .c_linux:
-    append(&files_to_parse, "std/linux_std.nn")
+    append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
   case .fasm_x86_64_tcc_linux:
-    append(&files_to_parse, "std/linux_std.nn")
+    append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
   case .c_win64:
-    append(&files_to_parse, "std/linux_std.nn")
-  // nostd = true
+    append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
+
   }
 
   for n in fl_cont.remaining {
@@ -174,15 +158,15 @@ main :: proc() {
   case .none:
     fmt.assertf(false, "shouldn't happen")
   case .fasm_x86_64_linux:
-    if exec_and_run_sync([]string{"external/fasm_linux", file_out}) != nil do os.exit(1)
-    if exec_and_run_sync([]string{"chmod", "+x", file_out}) != nil do os.exit(1)
+    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/fasm_linux"}), file_out}) != nil do os.exit(1)
+    if bd.exec_and_run_sync([]string{"chmod", "+x", file_out}) != nil do os.exit(1)
   case .c_linux:
-    if exec_and_run_sync([]string{"external/tcc_linux", "-g", file_out, "-o", file_out}) != nil do os.exit(1)
+    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/tcc_linux"}), "-g", file_out, "-o", file_out}) != nil do os.exit(1)
   case .fasm_x86_64_tcc_linux:
-    if exec_and_run_sync([]string{"external/fasm_linux", file_out}) != nil do os.exit(1)
-    if exec_and_run_sync([]string{"external/tcc_linux", strings.concatenate({file_out, ".o"}), "-g", "-o", file_out}) != nil do os.exit(1)
+    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/fasm_linux"}), file_out}) != nil do os.exit(1)
+    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/tcc_linux"}), "-g", file_out, "-o", file_out}) != nil do os.exit(1)
   case .c_win64:
     fmt.assertf(false, "will have to rewrite stb_c_lexer in odin fot it to work")
-    if exec_and_run_sync([]string{"external/tcc_win64.exe", file_out, "-g", "-o", file_out}) != nil do os.exit(1)
+    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/tcc_win64.exe"}), file_out}) != nil do os.exit(1)
   }
 }

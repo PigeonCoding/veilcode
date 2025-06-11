@@ -370,7 +370,7 @@ odin_cmd_builder :: struct {
   directory: string,
 }
 
-build_cmd :: proc(b: ^odin_cmd_builder) -> []string {
+build_cmd :: proc(b: ^odin_cmd_builder) -> [dynamic]string {
   res: [dynamic]string
 
 
@@ -977,7 +977,7 @@ build_cmd :: proc(b: ^odin_cmd_builder) -> []string {
     append(&res, strings.concatenate({"-pdb-name:", b.flags.pdb_name}))
   }
 
-  return res[:]
+  return res
 }
 
 DEBUG :: true
@@ -1011,7 +1011,7 @@ main :: proc() {
   b: odin_cmd_builder
   b.main_cmd = .build
   b.directory = ".."
-  b.flags.out = "../out/veilcode"
+  b.flags.out = "veilcode"
   b.flags.thread_count = 4
   if DEBUG {
     b.flags.debug = true
@@ -1019,6 +1019,8 @@ main :: proc() {
     b.flags.optimization = .speed
   }
 
-  if exec_and_run_sync(build_cmd(&b)) != nil do os2.exit(1)
+  cmd := build_cmd(&b)
+
+  if exec_and_run_sync(cmd[:]) != nil do os2.exit(1)
 
 }
