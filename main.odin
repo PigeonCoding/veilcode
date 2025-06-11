@@ -158,15 +158,15 @@ main :: proc() {
   case .none:
     fmt.assertf(false, "shouldn't happen")
   case .fasm_x86_64_linux:
-    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/fasm_linux"}), file_out}) != nil do os.exit(1)
+    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/fasm_linux"}), file_out}) != nil do os.exit(1)
     if bd.exec_and_run_sync([]string{"chmod", "+x", file_out}) != nil do os.exit(1)
   case .c_linux:
-    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/tcc_linux"}), "-g", file_out, "-o", file_out}) != nil do os.exit(1)
+    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", file_out, "-o", file_out}) != nil do os.exit(1)
   case .fasm_x86_64_tcc_linux:
-    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/fasm_linux"}), file_out}) != nil do os.exit(1)
-    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/tcc_linux"}), "-g", file_out, "-o", file_out}) != nil do os.exit(1)
+    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/fasm_linux"}), file_out}) != nil do os.exit(1)
+    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", file_out, "-o", file_out}) != nil do os.exit(1)
   case .c_win64:
     fmt.assertf(false, "will have to rewrite stb_c_lexer in odin fot it to work")
-    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/tcc_win64.exe"}), file_out}) != nil do os.exit(1)
+    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/win64/tcc.exe"}), file_out}) != nil do os.exit(1)
   }
 }
