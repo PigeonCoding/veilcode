@@ -1,16 +1,16 @@
 # veilcode is a compiled programming language
 ## how to build
 ### prerequisite
-- fasm
-- cc (gcc)
+- fasm (included)
+- tcc (included)
 - odin
 
 ```console
-$ make release
+$ make release_linux
 ```
 or
 ```console
-$ make debug
+$ make debug_linux
 ```
 ## how to use
 see examples
