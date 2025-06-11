@@ -1,4 +1,5 @@
-out
+out/*
+!out/build.odin
 thirdparty/stb_c_lexer/*
 !thirdparty/stb_c_lexer/stb_c_lexer.h
 veilcode
