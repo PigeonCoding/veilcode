@@ -14,12 +14,12 @@ import fg "thirdparty/flags_odin"
 
 target_enum :: enum {
   none, // TODO: temporary will remove later when os detection is implemented
-  fasm_x86_64_linux,
+  f86_64linux,
   c_linux,
   c_win64,
-  fasm_x86_64_tcc_linux, // broken for now TODO: make work
+  f86_64tlinux,
 }
-target: target_enum = .fasm_x86_64_linux
+target: target_enum = .f86_64linux
 
 file_out := "nn_out"
 root_path := "."
@@ -69,11 +69,11 @@ main :: proc() {
         }
         os.exit(0)
       case "fasm_x86_64_linux":
-        target = .fasm_x86_64_linux
+        target = .f86_64linux
       case "c_linux":
         target = .c_linux
       case "fasm_x86_64_tcc_linux":
-        target = .fasm_x86_64_tcc_linux
+        target = .f86_64tlinux
       case "c_win64":
         target = .c_win64
       }
@@ -92,11 +92,11 @@ main :: proc() {
   switch target {
   case .none:
     fmt.assertf(false, "shouldn't happen")
-  case .fasm_x86_64_linux:
+  case .f86_64linux:
     append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
   case .c_linux:
     append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
-  case .fasm_x86_64_tcc_linux:
+  case .f86_64tlinux:
     append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
   case .c_win64:
     append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
@@ -133,11 +133,11 @@ main :: proc() {
   switch target {
   case .none:
     fmt.assertf(false, "shouldn't happen")
-  case .fasm_x86_64_linux:
+  case .f86_64linux:
     to_write = f86_64linux.generate(instrs)
   case .c_linux:
     to_write = c_linux.generate(instrs)
-  case .fasm_x86_64_tcc_linux:
+  case .f86_64tlinux:
     to_write = f86_64tlinux.generate(instrs)
   case .c_win64:
     to_write = c_linux.generate(instrs)
@@ -157,12 +157,12 @@ main :: proc() {
   switch target {
   case .none:
     fmt.assertf(false, "shouldn't happen")
-  case .fasm_x86_64_linux:
+  case .f86_64linux:
     if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/fasm_linux"}), file_out}) != nil do os.exit(1)
     if bd.exec_and_run_sync([]string{"chmod", "+x", file_out}) != nil do os.exit(1)
   case .c_linux:
     if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", file_out, "-o", file_out}) != nil do os.exit(1)
-  case .fasm_x86_64_tcc_linux:
+  case .f86_64tlinux:
     if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/fasm_linux"}), file_out}) != nil do os.exit(1)
     if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", strings.concatenate({file_out, ".o"}), "-o", file_out, strings.concatenate({"-L", root_path, "/external/linux/tcc/lib/tcc"})}) != nil do os.exit(1)
   case .c_win64:

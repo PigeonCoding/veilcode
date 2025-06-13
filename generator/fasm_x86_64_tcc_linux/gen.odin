@@ -1,6 +1,7 @@
 package veilcode_fasm_x86_64_gcc_linux
 
 import cm "../../common"
+import f86_64linux "../fasm_x86_64_linux"
 import "core:fmt"
 import "core:os"
 import "core:strings"
@@ -29,7 +30,7 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
   // cm.builder_append_string(&res, "_start:\n")
 
 
-  generate_instr(instrs, &res)
+  f86_64linux.generate_instr(instrs, &res)
 
   // cm.builder_append_string(&res, "  mov rax, 60\n")
   // cm.builder_append_string(&res, "  mov rdi, 0\n")
@@ -82,101 +83,101 @@ get_arg_num_from_call :: proc(instrs: []cm.n_instrs) -> int {
 // r15 r14: used when doing math stuff
 // r13: used for derefrencing
 
-generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
-  syscall_reg_list := [?]string{"rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"}
-  for instr in instrs {
-    if len(instr.params) != 0 do generate_instr(instr.params[:], b)
+// generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
+//   syscall_reg_list := [?]string{"rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"}
+//   for instr in instrs {
+//     if len(instr.params) != 0 do generate_instr(instr.params[:], b)
 
-    if len(instr.params) == 0 && instr.instr == .store do continue
+//     if len(instr.params) == 0 && instr.instr == .store do continue
 
-    #partial switch instr.instr {
-    case .push:
-      fmt.sbprintf(b, "  push %d\n", instr.val)
-    case .add:
-      if instr.name == "" {
-        fmt.sbprintf(b, "  pop r15\n")
-        fmt.sbprintf(b, "  add r15, %d\n", instr.val)
-        fmt.sbprintf(b, "  push r15\n")
-      } else {
-        fmt.sbprintf(b, "  pop r15\n")
-        fmt.sbprintf(b, "  pop r14\n")
-        fmt.sbprintf(b, "  add r15, r14\n")
-        fmt.sbprintf(b, "  push r15\n")
-      }
-    case .sub:
-      if instr.name == "" {
-        fmt.sbprintf(b, "  pop r15\n")
-        fmt.sbprintf(b, "  sub r15, %d\n", instr.val)
-        fmt.sbprintf(b, "  push r15\n")
-      } else {
-        fmt.sbprintf(b, "  pop r15\n")
-        fmt.sbprintf(b, "  pop r14\n")
-        fmt.sbprintf(b, "  sub r15, r14\n")
-        fmt.sbprintf(b, "  push r15\n")
-      }
-    case .mult:
-      fmt.sbprintf(b, "  mov r14, rax\n")
+//     #partial switch instr.instr {
+//     case .push:
+//       fmt.sbprintf(b, "  push %d\n", instr.val)
+//     case .add:
+//       if instr.name == "" {
+//         fmt.sbprintf(b, "  pop r15\n")
+//         fmt.sbprintf(b, "  add r15, %d\n", instr.val)
+//         fmt.sbprintf(b, "  push r15\n")
+//       } else {
+//         fmt.sbprintf(b, "  pop r15\n")
+//         fmt.sbprintf(b, "  pop r14\n")
+//         fmt.sbprintf(b, "  add r15, r14\n")
+//         fmt.sbprintf(b, "  push r15\n")
+//       }
+//     case .sub:
+//       if instr.name == "" {
+//         fmt.sbprintf(b, "  pop r15\n")
+//         fmt.sbprintf(b, "  sub r15, %d\n", instr.val)
+//         fmt.sbprintf(b, "  push r15\n")
+//       } else {
+//         fmt.sbprintf(b, "  pop r15\n")
+//         fmt.sbprintf(b, "  pop r14\n")
+//         fmt.sbprintf(b, "  sub r15, r14\n")
+//         fmt.sbprintf(b, "  push r15\n")
+//       }
+//     case .mult:
+//       fmt.sbprintf(b, "  mov r14, rax\n")
 
-      fmt.sbprintf(b, "  pop rax\n")
-      fmt.sbprintf(b, "  mov r15, %d\n", instr.val)
-      fmt.sbprintf(b, "  mul r15\n")
-      fmt.sbprintf(b, "  push rax\n")
+//       fmt.sbprintf(b, "  pop rax\n")
+//       fmt.sbprintf(b, "  mov r15, %d\n", instr.val)
+//       fmt.sbprintf(b, "  mul r15\n")
+//       fmt.sbprintf(b, "  push rax\n")
 
-      fmt.sbprintf(b, "  mov rax, r14\n")
+//       fmt.sbprintf(b, "  mov rax, r14\n")
 
-    case .div:
-      fmt.sbprintf(b, "  mov r15, rax\n")
-      fmt.sbprintf(b, "  mov r14, rdx\n")
+//     case .div:
+//       fmt.sbprintf(b, "  mov r15, rax\n")
+//       fmt.sbprintf(b, "  mov r14, rdx\n")
 
-      fmt.sbprintf(b, "  pop rax\n")
-      fmt.sbprintf(b, "  mov r13, %d\n", instr.val)
+//       fmt.sbprintf(b, "  pop rax\n")
+//       fmt.sbprintf(b, "  mov r13, %d\n", instr.val)
 
-      fmt.sbprintf(b, "  xor rdx, rdx\n")
-      fmt.sbprintf(b, "  div r13\n")
+//       fmt.sbprintf(b, "  xor rdx, rdx\n")
+//       fmt.sbprintf(b, "  div r13\n")
 
-      fmt.sbprintf(b, "  push rax\n")
+//       fmt.sbprintf(b, "  push rax\n")
 
-      fmt.sbprintf(b, "  mov rax, r15\n")
-      fmt.sbprintf(b, "  mov rdx, r14\n")
-    case .store:
-      fmt.sbprintf(b, "  pop QWORD[%s + %d]\n", instr.name, instr.offset)
-    case .assign:
-      if auto_cast instr.offset > instr.type_num - 1 {
-        fmt.eprintln(
-          "tried to access an array outside of its bounds please reconsider your life choices",
-        )
-        os.exit(1)
-      }
-      fmt.sbprintf(b, "  pop QWORD[%s + %d]\n", instr.name, instr.offset)
-    case .load:
-      brack := []byte{'[', ' '}
-      brack2 := []byte{']', ' '}
-      fmt.sbprintf(
-        b,
-        "  push QWORD%c%s + %d%c\n",
-        brack[cast(int)instr.ptr],
-        instr.name,
-        instr.offset,
-        brack2[cast(int)instr.ptr],
-      )
-    case .deref:
-      fmt.sbprintf(b, "  mov r13, QWORD [%s + %d]\n", instr.name, instr.offset)
-      fmt.sbprintf(b, "  push QWORD[r13]\n")
-    case .syscall:
-      arg_num := get_arg_num_from_call(instr.params[:])
+//       fmt.sbprintf(b, "  mov rax, r15\n")
+//       fmt.sbprintf(b, "  mov rdx, r14\n")
+//     case .store:
+//       fmt.sbprintf(b, "  pop QWORD[%s + %d]\n", instr.name, instr.offset)
+//     case .assign:
+//       if auto_cast instr.offset > instr.type_num - 1 {
+//         fmt.eprintln(
+//           "tried to access an array outside of its bounds please reconsider your life choices",
+//         )
+//         os.exit(1)
+//       }
+//       fmt.sbprintf(b, "  pop QWORD[%s + %d]\n", instr.name, instr.offset)
+//     case .load:
+//       brack := []byte{'[', ' '}
+//       brack2 := []byte{']', ' '}
+//       fmt.sbprintf(
+//         b,
+//         "  push QWORD%c%s + %d%c\n",
+//         brack[cast(int)instr.ptr],
+//         instr.name,
+//         instr.offset,
+//         brack2[cast(int)instr.ptr],
+//       )
+//     case .deref:
+//       fmt.sbprintf(b, "  mov r13, QWORD [%s + %d]\n", instr.name, instr.offset)
+//       fmt.sbprintf(b, "  push QWORD[r13]\n")
+//     case .syscall:
+//       arg_num := get_arg_num_from_call(instr.params[:])
 
-      for i in 0 ..< arg_num {
-        fmt.sbprintf(b, "  pop %s\n", syscall_reg_list[arg_num - i - 1])
-      }
-      fmt.sbprintf(b, "  syscall\n")
-    case .nothing:
-    case:
-      fmt.print("curent state: \n", string(b.buf[:]))
-      fmt.println("-------------------------------------------")
-      fmt.eprintln("unimplemented", instr.instr)
-      fmt.println(instrs)
-      os.exit(1)
-    }
-  }
+//       for i in 0 ..< arg_num {
+//         fmt.sbprintf(b, "  pop %s\n", syscall_reg_list[arg_num - i - 1])
+//       }
+//       fmt.sbprintf(b, "  syscall\n")
+//     case .nothing:
+//     case:
+//       fmt.print("curent state: \n", string(b.buf[:]))
+//       fmt.println("-------------------------------------------")
+//       fmt.eprintln("unimplemented", instr.instr)
+//       fmt.println(instrs)
+//       os.exit(1)
+//     }
+//   }
 
-}
+// }
