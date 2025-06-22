@@ -29,6 +29,8 @@ prt_usage :: proc(program_name: string, fl_cont: ^(fg.flag_container)) {
   fg.print_usage(fl_cont)
 }
 
+BUILD :: true
+
 main :: proc() {
 
   if ODIN_OS != .Linux && ODIN_OS != .Windows {
@@ -126,7 +128,6 @@ main :: proc() {
   }
 
   instrs := parse(files_to_parse[:])
-  // // fmt.println(instrs)
 
   pros: os2.Process_Desc
   to_write: string
@@ -154,19 +155,21 @@ main :: proc() {
   }
 
 
-  switch target {
-  case .none:
-    fmt.assertf(false, "shouldn't happen")
-  case .f86_64linux:
-    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/fasm_linux"}), file_out}) != nil do os.exit(1)
-    if bd.exec_and_run_sync([]string{"chmod", "+x", file_out}) != nil do os.exit(1)
-  case .c_linux:
-    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", file_out, "-o", file_out}) != nil do os.exit(1)
-  case .f86_64tlinux:
-    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/fasm_linux"}), file_out}) != nil do os.exit(1)
-    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", strings.concatenate({file_out, ".o"}), "-o", file_out, strings.concatenate({"-L", root_path, "/external/linux/tcc/lib/tcc"})}) != nil do os.exit(1)
-  case .c_win64:
-    fmt.assertf(false, "will have to rewrite stb_c_lexer in odin fot it to work")
-    if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/win64/tcc.exe"}), file_out}) != nil do os.exit(1)
+  if BUILD {
+    switch target {
+    case .none:
+      fmt.assertf(false, "shouldn't happen")
+    case .f86_64linux:
+      if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/fasm_linux"}), file_out}) != nil do os.exit(1)
+      if bd.exec_and_run_sync([]string{"chmod", "+x", file_out}) != nil do os.exit(1)
+    case .c_linux:
+      if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", file_out, "-o", file_out}) != nil do os.exit(1)
+    case .f86_64tlinux:
+      if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/fasm_linux"}), file_out}) != nil do os.exit(1)
+      if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", strings.concatenate({file_out, ".o"}), "-o", file_out, strings.concatenate({"-L", root_path, "/external/linux/tcc/lib/tcc"})}) != nil do os.exit(1)
+    case .c_win64:
+      fmt.assertf(false, "will have to rewrite stb_c_lexer in odin fot it to work")
+      if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/win64/tcc.exe"}), file_out}) != nil do os.exit(1)
+    }
   }
 }

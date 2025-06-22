@@ -6,30 +6,6 @@ import "core:strings"
 
 DEBUG := true
 
-build_stb_c_lexer :: proc() {
-  if ODIN_OS == .Linux {
-    if err := exec_and_run_sync(
-    []string {
-      // "external/linux/tcc/bin/tcc",
-      "cc",
-      "-x",
-      "c",
-      "-c",
-      "-g",
-      "thirdparty/stb_c_lexer/stb_c_lexer.h",
-      "-o",
-      "thirdparty/stb_c_lexer/stb_c_lexer_linux64.o",
-      "-DSTB_C_LEXER_IMPLEMENTATION",
-    },
-    ); err != nil {
-      fmt.println(err)
-      os2.exit(1)
-    }
-  } else {
-    fmt.eprintln("fuck windows")
-    os2.exit(1)
-  }
-}
 
 main :: proc() {
   b: odin_cmd_builder
@@ -49,7 +25,6 @@ main :: proc() {
   }
 
   cmd := build_cmd(&b)
-  build_stb_c_lexer()
   if exec_and_run_sync(cmd[:]) != nil do os2.exit(1)
   if exec_and_run_sync([]string{"chmod", "+x", strings.concatenate({b.directory, "/", b.flags.out})}) != nil do os2.exit(1)
 

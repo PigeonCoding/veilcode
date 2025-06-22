@@ -15,6 +15,9 @@ n_instrs_enum :: enum {
   jmp,
   deref,
   nothing,
+  if_,
+  else_,
+  eq,
 }
 
 n_types :: enum {

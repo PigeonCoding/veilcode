@@ -50,7 +50,7 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
 generate_instrs :: proc(instrs: []cm.n_instrs, s: ^strings.Builder) {
 
   for ins in instrs {
-    switch ins.instr {
+    #partial switch ins.instr {
     case .store, .assign:
       fmt.sbprint(s, ";\n")
       if len(ins.params) != 0 {

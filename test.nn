@@ -1,14 +1,2 @@
-let a: char = (45 - 30);
-
-let arr: [6]ptr;
-arr[5] = &a;
-
-
-// if ( a == 1 ) {
-//   syscall(sys_exit, arr);
-// } else if ( a == 2 ) {
-//   syscall(sys_exit, 3);
-// } else {
-//   syscall(sys_exit, 2);
-// }
-
+let arr: [13]char;
+arr[0] = 'H';

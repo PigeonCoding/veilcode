@@ -1,1 +1,2 @@
 let a: int = 34 + 35;
+syscall(sys_exit, a);
