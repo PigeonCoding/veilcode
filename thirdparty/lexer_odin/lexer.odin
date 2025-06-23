@@ -322,8 +322,6 @@ init_lexer :: proc(file: string) -> lexer {
 }
 
 get_token :: proc(l: ^lexer) {
-  defer fmt.println(l.token)
-
   l.token.type = .null_char
   l.token.intlit = 0
   l.token.floatlit = 0

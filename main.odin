@@ -40,69 +40,66 @@ main :: proc() {
   nostd := false
 
   fl_cont: fg.flag_container
-  fg.add_flag(
-    &fl_cont,
-    "target",
-    "arch",
-    "sets the desired target (-target list for all the targets)",
-  )
+  fg.add_flag(&fl_cont, "target", "", "sets the desired target (-target list for all the targets)")
   fg.add_flag(&fl_cont, "h", false, "shows this message")
   fg.add_flag(&fl_cont, "out", "", "sets the name dor the output file")
   fg.add_flag(&fl_cont, "nostd", false, "disables the standard lib")
   fg.add_flag(&fl_cont, "root_path", "", "sets a custom path for the root folder of veilcode")
 
+  fg.init_container(&fl_cont)
 
   fg.check_flags(&fl_cont)
   program_name := fl_cont.remaining[0]
   fl_cont.remaining = fl_cont.remaining[1:]
 
-  // fmt.println(fl_cont)
+  if fg.get_flag_value(&fl_cont, "h") != nil {
+    prt_usage(program_name, &fl_cont)
+  }
 
-  for f in fl_cont.parsed_flags {
-    switch f.flag {
-    case "h":
-      prt_usage(program_name, &fl_cont)
-      os.exit(0)
-    case "target":
-      switch f.value {
-      case "list":
-        for t in reflect.enum_field_names(target_enum) {
-          if t != "none" do fmt.println(t)
-        }
-        os.exit(0)
-      case "fasm_x86_64_linux":
-        target = .f86_64linux
-      case "c_linux":
-        target = .c_linux
-      case "fasm_x86_64_tcc_linux":
-        target = .f86_64tlinux
-      case "c_win64":
-        target = .c_win64
+  if target_selected := fg.get_flag_value(&fl_cont, "target"); target_selected != nil {
+    switch (cast(^string)target_selected)^ {
+    case "list":
+      for t in reflect.enum_field_names(target_enum) {
+        if t != "none" do fmt.println(t)
       }
-
-    case "out":
-      file_out = f.value.(string)
-    case "nostd":
-      nostd = true
-    case "root_path":
-      root_path = f.value.(string)
+      os.exit(0)
+    case "fasm_x86_64_linux":
+      target = .f86_64linux
+    case "c_linux":
+      target = .c_linux
+    case "fasm_x86_64_tcc_linux":
+      target = .f86_64tlinux
+    case "c_win64":
+      target = .c_win64
     }
+  }
 
+  if out := fg.get_flag_value(&fl_cont, "out"); out != nil {
+    file_out = (cast(^string)out)^
+  }
+
+  if fg.get_flag_value(&fl_cont, "nostr") != nil {
+    nostd = true
+  }
+
+  if root := fg.get_flag_value(&fl_cont, "root_path"); root != nil {
+    root_path = (cast(^string)root)^
   }
 
   files_to_parse: [dynamic]string
-  switch target {
-  case .none:
-    fmt.assertf(false, "shouldn't happen")
-  case .f86_64linux:
-    append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
-  case .c_linux:
-    append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
-  case .f86_64tlinux:
-    append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
-  case .c_win64:
-    append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
-
+  if !nostd {
+    switch target {
+    case .none:
+      fmt.assertf(false, "shouldn't happen")
+    case .f86_64linux:
+      append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
+    case .c_linux:
+      append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
+    case .f86_64tlinux:
+      append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
+    case .c_win64:
+      append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
+    }
   }
 
   for n in fl_cont.remaining {
