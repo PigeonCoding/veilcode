@@ -3,7 +3,6 @@
 ### prerequisite
 - fasm (included)
 - tcc (included)
-- cc (for the time being)
 - odin
 
 ```console
