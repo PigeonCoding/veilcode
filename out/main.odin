@@ -12,6 +12,8 @@ main :: proc() {
   b.main_cmd = .build
   if ODIN_OS == .Linux {
     b.flags.out = "out/veilcode"
+  } else if ODIN_OS == .Windows {
+    b.flags.out = "out\\veilcode.exe"
   } else {
     fmt.println("unsupported os", ODIN_OS)
     os2.exit(1)

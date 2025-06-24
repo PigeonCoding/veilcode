@@ -145,10 +145,18 @@ main :: proc() {
   cm.builder_append_string(&b, to_write)
   delete(to_write)
 
-  res := os.write_entire_file_or_err(file_out, b.buf[:])
-  if res != nil {
-    fmt.eprintln(res)
-    os.exit(1)
+  if ODIN_OS == .Windows {
+    res := os.write_entire_file_or_err(strings.concatenate({file_out, ".c"}), b.buf[:])
+    if res != nil {
+      fmt.eprintln(res)
+      os.exit(1)
+    }
+  } else {
+    res := os.write_entire_file_or_err(file_out, b.buf[:])
+    if res != nil {
+      fmt.eprintln(res)
+      os.exit(1)
+    }
   }
 
 
@@ -162,11 +170,13 @@ main :: proc() {
     case .c_linux:
       if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", file_out, "-o", file_out}) != nil do os.exit(1)
     case .f86_64tlinux:
+      fmt.println("hi")
       if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/fasm_linux"}), file_out}) != nil do os.exit(1)
       if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", strings.concatenate({file_out, ".o"}), "-o", file_out, strings.concatenate({"-L", root_path, "/external/linux/tcc/lib/tcc"})}) != nil do os.exit(1)
     case .c_win64:
-      fmt.assertf(false, "will have to rewrite stb_c_lexer in odin fot it to work")
-      if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/win64/tcc.exe"}), file_out}) != nil do os.exit(1)
+      // fmt.assertf(false, "will have to rewrite stb_c_lexer in odin fot it to work")
+      fmt.println(file_out)
+      if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/win64/tcc/tcc.exe"}), strings.concatenate({file_out, ".c"}), "-g", "-o", file_out, strings.concatenate({"-L", root_path, "/external/linux/tcc/tcc/lib/tcc"})}) != nil do os.exit(1)
     }
   }
 }

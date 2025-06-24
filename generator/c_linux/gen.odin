@@ -37,6 +37,7 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
   // fmt.println(instrs)
 
   generate_instrs(instrs, &s)
+  cm.builder_append_string(&s, "  return 0;\n")
   cm.builder_append_string(&s, ";\n")
   cm.builder_append_string(&s, "}")
 
@@ -80,7 +81,10 @@ generate_instrs :: proc(instrs: []cm.n_instrs, s: ^strings.Builder) {
       fmt.println(ins)
     case .nothing:
     case .call:
-    case .syscall:
+      case .syscall:
+      fmt.sbprint(s, ";\n")
+      fmt.println("syscall not for now")
+      continue
     case .nun:
     }
 
