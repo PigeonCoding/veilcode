@@ -1,2 +1,0 @@
-let arr: [13]char;
-arr[0] = 'H';

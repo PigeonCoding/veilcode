@@ -9,6 +9,9 @@ import lx "thirdparty/lexer_odin"
 
 store_list: [dynamic]cm.n_types
 
+@(private)
+label_counter := 0
+
 peek :: proc(l: lx.lexer) -> lx.token_id {
   b_l: lx.lexer
   b_l = l
@@ -36,7 +39,7 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lx.lexer) -> cm.n_instrs {
         if n.name == l.token.str && n.instr == cm.n_instrs_enum.store {
           ins.instr = .load
 
-          ins.name = l.token.str //  cm.clone_ptr_string(l.string, auto_cast l.string_len)
+          ins.name = l.token.str // 
           ins.type_num = n.type_num
           yes = true
 
@@ -69,38 +72,30 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lx.lexer) -> cm.n_instrs {
     ins.instr = .push
 
     yes := false
-    s := l.token.str // cm.clone_ptr_string(l.string, auto_cast l.string_len)
     for n in instrs {
-      if n.name == s && n.instr == cm.n_instrs_enum.store {
+      if n.name == l.token.str && n.instr == cm.n_instrs_enum.store {
         ins.instr = .load
-        ins.name = l.token.str // .clone_ptr_string(l.string, auto_cast l.string_len)
+        ins.name = l.token.str
         ins.type_num = n.type_num
         yes = true
-        {
-          next := peek(l^)
-          if next == .open_bracket {
-            lx.get_token(l)
-            lx.get_token(l)
-            lx.check_type(l, .intlit)
-            ins.offset = auto_cast l.token.intlit
+        if next := peek(l^); next == .open_bracket {
+          lx.get_token(l)
+          lx.get_token(l)
+          lx.check_type(l, .intlit)
+          ins.offset = auto_cast l.token.intlit
 
-            lx.get_token(l)
-            lx.check_type(l, .close_bracket)
-          }
-          // if success && next == '[' {
-          //   get_and_expect_and_assert(l, '[')
-          //   get_and_expect_and_assert(l, auto_cast CLEX.intlit)
-          //   ins.offset = auto_cast l.int_number
-          //   get_and_expect_and_assert(l, ']')
-          // }
+          lx.get_token(l)
+          lx.check_type(l, .close_bracket)
         }
+        if yes do break
       }
     }
+
     if !yes {
-      fmt.assertf(false, "function calling not implemented yet or unknown var")
+      fmt.assertf(false, "xx function calling not implemented yet or unknown var {}", l.token)
     }
     if !yes {
-      fmt.eprintln("1 get ur shit together wtf is", s)
+      fmt.eprintln("1 get ur shit together wtf is", l.token)
       os.exit(1)
     }
 
@@ -232,12 +227,11 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lx.lexer) -> cm.n_instrs {
       ins.val = auto_cast l.token.intlit
     case .id:
       yes := false
-      // s := cm.clone_ptr_string(l.string, auto_cast l.string_len)
       for n in instrs {
         if n.name == l.token.str {
           tmp2_ins: cm.n_instrs
           tmp2_ins.instr = .load
-          tmp2_ins.name = l.token.str //cm.clone_ptr_string(l.string, auto_cast l.string_len)
+          tmp2_ins.name = l.token.str
           append(&ins.params, tmp2_ins)
           yes = true
         }
@@ -263,17 +257,17 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lx.lexer) -> cm.n_instrs {
     for l.token.type != .close_parenthesis {
       append(&ins.params, get_pushed_shit(instrs, l))
       lx.get_token(l)
-      // fmt.println(ins)
-      // os.exit(1)
     }
+  case .notq:
+    ins.instr = .noteq
+
+    lx.get_token(l)
+    append(&ins.params, get_pushed_shit(instrs, l))
   case .eq:
     ins.instr = .eq
 
     lx.get_token(l)
     append(&ins.params, get_pushed_shit(instrs, l))
-
-    fmt.println(ins)
-
 
   case .intlit:
     ins.instr = .push
@@ -290,26 +284,14 @@ get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lx.lexer) -> cm.n_instrs {
 
   }
 
-
   return ins
-}
-
-
-stb_c_lexer_charlit_workaround :: proc(buf: []byte) -> []byte {
-  str: strings.Builder
-
-  for b, u in buf {
-    append(&str.buf, b)
-    if b == '\'' && (buf[u + 1] == ';' || buf[u + 1] == ')') {
-      append(&str.buf, ' ')
-    }
-  }
-
-  return str.buf[:]
 }
 
 parse :: proc(file_path: []string) -> []cm.n_instrs {
   instrs: [dynamic]cm.n_instrs
+
+  label_stack: [dynamic]int
+
 
   for file in file_path {
     lex: lx.lexer = lx.init_lexer(file)
@@ -318,6 +300,23 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
 
     f: for l.token.type != .null_char {
       #partial switch auto_cast l.token.type {
+      case .close_brace:
+        ins: cm.n_instrs
+        ins.instr = .label
+        if len(label_stack) == 0 {
+          fmt.eprintfln(
+            "%s:%d:%d a block was closed when there was nothing to close",
+            l.file,
+            l.row + 1,
+            l.col + 1,
+          )
+          os.exit(1)
+        }
+        ins.offset = auto_cast pop(&label_stack)
+        fmt.println(ins)
+
+        append(&instrs, ins)
+        lx.get_token(l)
       case .id:
         if l.token.str == "let" {
           ins: cm.n_instrs
@@ -328,9 +327,7 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
           ins.val = 1
           ins.type_num = 1
           ins.name = l.token.str
-          // cm.clone_ptr_string(l.string, auto_cast l.string_len)
 
-          // get_and_expect_and_assert(&l, ':')
           lx.get_token(l)
           if !lx.check_type(l, .colon) do os.exit(1)
 
@@ -341,16 +338,14 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
             // maybe support variables here at some point
             if !lx.check_type(l, .intlit) do os.exit(1)
 
-            // get_and_expect_and_assert(&l, auto_cast CLEX.intlit)
             ins.type_num = auto_cast l.token.intlit
-            // get_and_expect_and_assert(&l, ']')
             lx.get_token(l)
             if !lx.check_type(l, .close_bracket) do os.exit(1)
 
             lx.get_token(l)
           }
-          fmt.assertf(l.token.type == .id, "expected id but got {}", l.token) // TODO: new location printing
-          ins.type = cm.string_to_type(l.token.str) // cm.string_to_type(strings.string_from_ptr(l.string, auto_cast l.string_len))
+          if !lx.check_type(l, .id) do os.exit(1)
+          ins.type = cm.string_to_type(l.token.str)
 
           lx.get_token(l)
           if l.token.type == .equals_sign {
@@ -371,7 +366,6 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
           lx.get_token(l)
           if !lx.check_type(l, .open_parenthesis) do os.exit(1)
 
-          // get_and_expect_and_assert(&l, '(')
           lx.get_token(l)
           for l.token.type != .close_parenthesis {
             append(&ins.params, get_pushed_shit(instrs[:], l))
@@ -381,14 +375,16 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
 
           lx.get_token(l)
           append(&instrs, ins)
-          fmt.assertf(l.token.type == .semicolon, "expected ;")
+          if !lx.check_type(l, .semicolon) do os.exit(1)
           lx.get_token(l)
 
         } else if l.token.str == "if" {
           ins: cm.n_instrs
           ins.instr = .if_
+          ins.offset = label_counter
+          append(&label_stack, label_counter)
+          label_counter += 1
 
-          // get_and_expect_and_assert(&l, '(')
           lx.get_token(l)
           if !lx.check_type(l, .open_parenthesis) do os.exit(1)
 
@@ -397,18 +393,14 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
             append(&ins.params, get_pushed_shit(instrs[:], l))
             lx.get_token(l)
           }
+          if !lx.check_type(l, .close_parenthesis) do os.exit(1)
+          lx.get_token(l)
+          if !lx.check_type(l, .open_brace) do os.exit(1)
 
-          // get_and_expect_and_assert(&l, auto_cast CLEX.id)
-          fmt.println(ins)
+          lx.get_token(l)
+          append(&instrs, ins)
 
-          // lx.get_token(&l)
-          // switch l.token {
-          // case auto_cast CLEX.eq:
-
-          // }
-
-          fmt.assertf(false, "if NOT implemented yet")
-
+          // ins.instr = .jmp
 
         } else {   // VAR ASSIGNMENT OTHER THAN DECLARING
           yes2 := false
@@ -427,7 +419,6 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
             lx.get_token(l)
             if !lx.check_type(l, .intlit) do os.exit(1)
 
-            // get_and_expect_and_assert(&l, auto_cast CLEX.intlit)
             ins.offset = auto_cast l.token.intlit
             lx.get_token(l)
             if !lx.check_type(l, .close_bracket) do os.exit(1)
@@ -464,8 +455,6 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
       case:
         fmt.println("???", l.token)
         os.exit(1)
-      // if l.token > 255 do fmt.printfln("'{}'", cast(CLEX)l.token)
-      // else do fmt.printfln("'%c'", l.token)
       }
 
     }

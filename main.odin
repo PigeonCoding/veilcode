@@ -12,6 +12,7 @@ import "core:reflect"
 import "core:strings"
 import fg "thirdparty/flags_odin"
 
+
 target_enum :: enum {
   none, // TODO: temporary will remove later when os detection is implemented
   f86_64linux,
@@ -78,7 +79,7 @@ main :: proc() {
     file_out = (cast(^string)out)^
   }
 
-  if fg.get_flag_value(&fl_cont, "nostr") != nil {
+  if fg.get_flag_value(&fl_cont, "nostd") != nil {
     nostd = true
   }
 

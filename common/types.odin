@@ -17,7 +17,9 @@ n_instrs_enum :: enum {
   nothing,
   if_,
   else_,
+  label,
   eq,
+  noteq,
 }
 
 n_types :: enum {

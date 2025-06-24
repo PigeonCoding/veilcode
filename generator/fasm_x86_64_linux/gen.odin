@@ -5,6 +5,9 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
+@(private)
+counter := 0
+
 // NOTE: linux x86_64 calling convention
 // ints  : RAX, RDI, RSI, RDX, RCX, R8, and R9 
 // floats: XMM0 to XMM7 (128 bit)
@@ -36,6 +39,9 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
   cm.builder_append_string(&res, "  syscall\n")
 
   // cm.builder_append_string(&res, "section \".data\"\n")
+  // TODO: at some point make this some kind of array for else and if chaining
+  fmt.sbprintf(&res, "cmp_store: db 1 dup(0)\n")
+
   for instr in instrs {
     if instr.instr == .store {
       cm.builder_append_string(&res, instr.name)
@@ -54,7 +60,7 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
 
     }
   }
-
+  // fmt.println(string(res.buf[:]))
   return string(res.buf[:])
 }
 
@@ -78,7 +84,9 @@ get_arg_num_from_call :: proc(instrs: []cm.n_instrs) -> int {
 
 // r15 r14: used when doing math stuff
 // r13: used for derefrencing
-
+// r12, r11: one of stuff like comparisons (comp chaining isn't implemented yet)
+// 
+// TODO: maybe to it from memory 
 generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
   syscall_reg_list := [?]string{"rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"}
   for instr in instrs {
@@ -87,6 +95,34 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
     if len(instr.params) == 0 && instr.instr == .store do continue
 
     #partial switch instr.instr {
+    case .eq:
+      fmt.sbprintf(b, "  pop r12\n") // num2
+      fmt.sbprintf(b, "  pop r13\n") // num1
+      fmt.sbprintf(b, "  cmp r13, r12\n") // num1 < = > num2
+      fmt.sbprintf(b, "  je cmp_label_true_%d\n", counter)
+      fmt.sbprintf(b, "  mov QWORD[cmp_store], 1\n")
+      fmt.sbprintf(b, "  jmp cmp_label_false_%d\n", counter)
+      fmt.sbprintf(b, "cmp_label_true_%d:\n", counter)
+      fmt.sbprintf(b, "  mov QWORD[cmp_store], 0\n")
+      fmt.sbprintf(b, "cmp_label_false_%d:\n", counter)
+      counter += 1
+    case .noteq:
+      fmt.sbprintf(b, "  pop r12\n") // num2
+      fmt.sbprintf(b, "  pop r13\n") // num1
+      fmt.sbprintf(b, "  cmp r13, r12\n") // num1 < = > num2
+      fmt.sbprintf(b, "  jne cmp_label_true_%d\n", counter)
+      fmt.sbprintf(b, "  mov QWORD[cmp_store], 1\n")
+      fmt.sbprintf(b, "  jmp cmp_label_false_%d\n", counter)
+      fmt.sbprintf(b, "cmp_label_true_%d:\n", counter)
+      fmt.sbprintf(b, "  mov QWORD[cmp_store], 0\n")
+      fmt.sbprintf(b, "cmp_label_false_%d:\n", counter)
+      counter += 1
+    case .if_:
+      fmt.sbprintf(b, "  mov r13, 1\n")
+      fmt.sbprintf(b, "  cmp r13, [cmp_store]\n")
+      fmt.sbprintf(b, "  je label_s_%d\n", instr.offset)
+    case .label:
+      fmt.sbprintf(b, "label_s_%d:\n", instr.offset)
     case .push:
       fmt.sbprintf(b, "  push %d\n", instr.val)
     case .add:
