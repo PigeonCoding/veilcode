@@ -60,7 +60,7 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
 
     }
   }
-  // fmt.println(string(res.buf[:]))
+  fmt.println(string(res.buf[:]))
   return string(res.buf[:])
 }
 
@@ -117,6 +117,8 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
       fmt.sbprintf(b, "  mov QWORD[cmp_store], 0\n")
       fmt.sbprintf(b, "cmp_label_false_%d:\n", counter)
       counter += 1
+    case .jmp:
+      fmt.sbprintf(b, "  jmp label_s_%d\n", instr.offset)
     case .if_:
       fmt.sbprintf(b, "  mov r13, 1\n")
       fmt.sbprintf(b, "  cmp r13, [cmp_store]\n")

@@ -302,21 +302,63 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
       #partial switch auto_cast l.token.type {
       case .close_brace:
         ins: cm.n_instrs
-        ins.instr = .label
-        if len(label_stack) == 0 {
-          fmt.eprintfln(
-            "%s:%d:%d a block was closed when there was nothing to close",
-            l.file,
-            l.row + 1,
-            l.col + 1,
-          )
-          os.exit(1)
-        }
-        ins.offset = auto_cast pop(&label_stack)
-        fmt.println(ins)
-
-        append(&instrs, ins)
         lx.get_token(l)
+        // fmt.println(l.token, instrs[len(&instrs) - 1])
+        if l.token.str == "else" {
+
+          lx.get_token(l)
+          if !lx.check_type(l, .open_brace) do os.exit(1)
+
+          tmp := pop(&label_stack)
+
+          ins.instr = .jmp
+          ins.offset = label_counter
+          append(&label_stack, ins.offset)
+          label_counter += 1
+
+
+          append(&instrs, ins)
+
+          ins.instr = .label
+          if len(label_stack) == 0 {
+            fmt.eprintfln(
+              "%s:%d:%d a block was closed when there was nothing to close",
+              l.file,
+              l.row + 1,
+              l.col + 1,
+            )
+            os.exit(1)
+          }
+          ins.offset = tmp
+          lx.get_token(l)
+
+
+          append(&instrs, ins)
+
+
+          // fmt.println(ins)
+          // os.exit(1)
+
+        } else {
+          ins.instr = .label
+          if len(label_stack) == 0 {
+            fmt.eprintfln(
+              "%s:%d:%d a block was closed when there was nothing to close",
+              l.file,
+              l.row + 1,
+              l.col + 1,
+            )
+            os.exit(1)
+          }
+          ins.offset = auto_cast pop(&label_stack)
+          // lx.get_token(l)
+
+
+          append(&instrs, ins)
+        }
+      // os.exit(1)
+
+
       case .id:
         if l.token.str == "let" {
           ins: cm.n_instrs
@@ -400,11 +442,10 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
           lx.get_token(l)
           append(&instrs, ins)
 
-          // ins.instr = .jmp
-
         } else {   // VAR ASSIGNMENT OTHER THAN DECLARING
           yes2 := false
           ins: cm.n_instrs
+
           for instr in instrs {
             if instr.name == l.token.str {
               ins.name = instr.name
@@ -441,8 +482,11 @@ parse :: proc(file_path: []string) -> []cm.n_instrs {
 
 
           if ins.instr == .nun {
-            fmt.println("didn't assign anything to a variable apearently", l.token.str)
+            fmt.println("???", l.token)
             os.exit(1)
+
+            // fmt.println("didn't assign anything to a variable apearently", l.token.str)
+            // os.exit(1)
 
           }
 

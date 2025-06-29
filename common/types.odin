@@ -16,7 +16,7 @@ n_instrs_enum :: enum {
   deref,
   nothing,
   if_,
-  else_,
+  // else_,
   label,
   eq,
   noteq,
