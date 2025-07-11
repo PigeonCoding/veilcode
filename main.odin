@@ -1,9 +1,7 @@
 package veilcode
 
 import cm "./common"
-import c_linux "./generator/c_linux"
-import f86_64linux "./generator/fasm_x86_64_linux"
-import f86_64tlinux "./generator/fasm_x86_64_tcc_linux"
+import f86_64cclinux "./generator/fasm_x86_64_cc_linux"
 import bd "./out"
 import "core:fmt"
 import "core:os"
@@ -15,12 +13,9 @@ import fg "thirdparty/flags_odin"
 
 target_enum :: enum {
   none, // TODO: temporary will remove later when os detection is implemented
-  f86_64linux,
-  c_linux,
-  c_win64,
-  f86_64tlinux,
+  f86_64cclinux,
 }
-target: target_enum = .f86_64linux
+target: target_enum = .f86_64cclinux
 
 file_out := "nn_out"
 root_path := "."
@@ -64,14 +59,8 @@ main :: proc() {
         if t != "none" do fmt.println(t)
       }
       os.exit(0)
-    case "fasm_x86_64_linux":
-      target = .f86_64linux
-    case "c_linux":
-      target = .c_linux
     case "fasm_x86_64_tcc_linux":
-      target = .f86_64tlinux
-    case "c_win64":
-      target = .c_win64
+      target = .f86_64cclinux
     }
   }
 
@@ -92,13 +81,7 @@ main :: proc() {
     switch target {
     case .none:
       fmt.assertf(false, "shouldn't happen")
-    case .f86_64linux:
-      append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
-    case .c_linux:
-      append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
-    case .f86_64tlinux:
-      append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
-    case .c_win64:
+    case .f86_64cclinux:
       append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
     }
   }
@@ -132,14 +115,8 @@ main :: proc() {
   switch target {
   case .none:
     fmt.assertf(false, "shouldn't happen")
-  case .f86_64linux:
-    to_write = f86_64linux.generate(instrs)
-  case .c_linux:
-    to_write = c_linux.generate(instrs)
-  case .f86_64tlinux:
-    to_write = f86_64tlinux.generate(instrs)
-  case .c_win64:
-    to_write = c_linux.generate(instrs)
+  case .f86_64cclinux:
+    to_write = f86_64cclinux.generate(instrs)
   }
 
   b: strings.Builder
@@ -160,24 +137,27 @@ main :: proc() {
     }
   }
 
-
+  // TODO: clean the garbage
   if BUILD {
     switch target {
     case .none:
       fmt.assertf(false, "shouldn't happen")
-    case .f86_64linux:
+    case .f86_64cclinux:
+      // fmt.println("hi")
       if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/fasm_linux"}), file_out}) != nil do os.exit(1)
-      if bd.exec_and_run_sync([]string{"chmod", "+x", file_out}) != nil do os.exit(1)
-    case .c_linux:
-      if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", file_out, "-o", file_out}) != nil do os.exit(1)
-    case .f86_64tlinux:
-      fmt.println("hi")
-      if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/fasm_linux"}), file_out}) != nil do os.exit(1)
-      if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", strings.concatenate({file_out, ".o"}), "-o", file_out, strings.concatenate({"-L", root_path, "/external/linux/tcc/lib/tcc"})}) != nil do os.exit(1)
-    case .c_win64:
-      // fmt.assertf(false, "will have to rewrite stb_c_lexer in odin fot it to work")
-      fmt.println(file_out)
-      if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/win64/tcc/tcc.exe"}), strings.concatenate({file_out, ".c"}), "-g", "-o", file_out, strings.concatenate({"-L", root_path, "/external/linux/tcc/tcc/lib/tcc"})}) != nil do os.exit(1)
+      if bd.exec_and_run_sync([]string{"cc", "-no-pie", "-g", strings.concatenate({file_out, ".o"}), "-o", file_out}) != nil do os.exit(1)
+
+
+    // if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", strings.concatenate({file_out, ".o"}), "-o", file_out, strings.concatenate({"-L", root_path, "/external/linux/tcc/lib/tcc"})}) != nil do os.exit(1)
+    // case .f86_64linux:
+    //   if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/fasm_linux"}), file_out}) != nil do os.exit(1)
+    //   if bd.exec_and_run_sync([]string{"chmod", "+x", file_out}) != nil do os.exit(1)
+    // case .c_linux:
+    //   if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/linux/tcc/bin/tcc"}), "-g", file_out, "-o", file_out}) != nil do os.exit(1)
+    // case .c_win64:
+    //   // fmt.assertf(false, "will have to rewrite stb_c_lexer in odin fot it to work")
+    //   fmt.println(file_out)
+    //   if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/win64/tcc/tcc.exe"}), strings.concatenate({file_out, ".c"}), "-g", "-o", file_out, strings.concatenate({"-L", root_path, "/external/linux/tcc/tcc/lib/tcc"})}) != nil do os.exit(1)
     }
   }
 }

@@ -5,6 +5,7 @@ thirdparty/stb_c_lexer/*
 veilcode
 prt.txt
 print.asm
+test.asm
 wat.txt
 out.exe
 testing.nn

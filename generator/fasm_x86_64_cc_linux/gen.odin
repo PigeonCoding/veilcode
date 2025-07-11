@@ -1,4 +1,4 @@
-package veilcode_fasm_x86_64_linux
+package veilcode_fasm_x86_64_cc_linux
 
 import cm "../../common"
 import "core:fmt"
@@ -21,45 +21,52 @@ counter := 0
 // `dt`          : 10 bytes
 // `db n dup(0)` : n bytes
 
-generate :: proc(instrs: []cm.n_instrs) -> string {
-  res: strings.Builder
-  cm.builder_append_string(&res, "format ELF64 executable\n")
+generate_fluf_start :: proc(b: ^strings.Builder) {
+  cm.builder_append_string(b, "format ELF64\n")
 
-  // cm.builder_append_string(&res, "section \".text\" executable\n")
-  // cm.builder_append_string(&res, "public main\n")
-  // cm.builder_append_string(&res, "public _start\n")
-  cm.builder_append_string(&res, "main:\n")
-  // cm.builder_append_string(&res, "_start:\n")
+  cm.builder_append_string(b, "section '.text' executable\n")
+  cm.builder_append_string(b, "public main\n")
+  cm.builder_append_string(b, "main:\n")
+}
 
+generate_fluf_end :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
+  
+  cm.builder_append_string(b, "section '.data' writable\n")
 
-  generate_instr(instrs, &res)
-
-  cm.builder_append_string(&res, "  mov rax, 60\n")
-  cm.builder_append_string(&res, "  mov rdi, 0\n")
-  cm.builder_append_string(&res, "  syscall\n")
-
-  // cm.builder_append_string(&res, "section \".data\"\n")
-  // TODO: at some point make this some kind of array for else and if chaining
-  fmt.sbprintf(&res, "cmp_store: db 1 dup(0)\n")
-
+  fmt.sbprintf(b, "cmp_store: db 1 dup(0)\n")
   for instr in instrs {
     if instr.instr == .store {
-      cm.builder_append_string(&res, instr.name)
+      cm.builder_append_string(b, instr.name)
       switch instr.type {
       case .n_char:
-        fmt.sbprintf(&res, ": db %d dup(0)", instr.type_num)
+        fmt.sbprintf(b, ": db %d dup(0)", instr.type_num)
       case .n_int, .n_ptr:
-        fmt.sbprintf(&res, ": dq %d dup(0)", instr.type_num)
+        fmt.sbprintf(b, ": dq %d dup(0)", instr.type_num)
       case .n_none:
         fmt.eprintln(
-          "this should not have happened but a variable has the type none we are fucked",
+          "this should not have happened but a variable has the type none, we are fucked",
         )
         os.exit(1)
       }
-      cm.builder_append_string(&res, "\n")
+      cm.builder_append_string(b, "\n")
 
     }
   }
+
+}
+
+
+generate :: proc(instrs: []cm.n_instrs) -> string {
+  res: strings.Builder
+
+  generate_fluf_start(&res)
+
+  generate_instr(instrs, &res)
+  cm.builder_append_string(&res, "  mov rax, 0\n")
+  cm.builder_append_string(&res, "  ret\n")
+
+  generate_fluf_end(&res, instrs)
+
   fmt.println(string(res.buf[:]))
   return string(res.buf[:])
 }

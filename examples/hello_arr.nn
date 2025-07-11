@@ -1,4 +1,4 @@
-let arr: [13]char;
+let arr: [14]char;
 arr[0] = 'H';
 arr[1] = 'e';
 arr[2] = 'l';
@@ -12,5 +12,6 @@ arr[9] = 'r';
 arr[10] = 'l';
 arr[11] = 'd';
 arr[12] = 10;
+arr[13] = 0;
 
 syscall(sys_write, stdout, &arr[0], 13);

@@ -2,7 +2,7 @@
 ## how to build
 ### prerequisite
 - fasm (included)
-- tcc (included)
+- cc
 - odin
 
 ```console
@@ -13,5 +13,5 @@ $ odin run out
 see examples
 ```
 $ ./out/veilcode -out out/hello examples/hello_arr.nn
-$ ./out/hello  
+$ ./out/hello
 ```
