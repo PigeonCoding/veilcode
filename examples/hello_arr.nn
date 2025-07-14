@@ -14,4 +14,5 @@ arr[11] = 'd';
 arr[12] = 10;
 arr[13] = 0;
 
-syscall(sys_write, stdout, &arr[0], 13);
+extrn printf "printf"
+printf(0, &arr)

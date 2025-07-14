@@ -3,6 +3,7 @@ package veilcode_common
 n_instrs_enum :: enum {
   nun,
   push,
+  create,
   store,
   assign,
   load,
@@ -20,6 +21,8 @@ n_instrs_enum :: enum {
   label,
   eq,
   noteq,
+  block,
+  extrn,
 }
 
 n_types :: enum {
@@ -40,4 +43,5 @@ n_instrs :: struct {
   flt:      f64,
   ptr:      bool,
   params:   [dynamic]n_instrs,
+  optional: string,
 }

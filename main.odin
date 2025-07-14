@@ -109,6 +109,7 @@ main :: proc() {
   }
 
   instrs := parse(files_to_parse[:])
+  // fmt.println(instrs)
 
   pros: os2.Process_Desc
   to_write: string

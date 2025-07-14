@@ -24,19 +24,32 @@ counter := 0
 generate_fluf_start :: proc(b: ^strings.Builder) {
   cm.builder_append_string(b, "format ELF64\n")
 
-  cm.builder_append_string(b, "section '.text' executable\n")
-  cm.builder_append_string(b, "public main\n")
-  cm.builder_append_string(b, "main:\n")
 }
 
-generate_fluf_end :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
-  
+generate_vars :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
+
   cm.builder_append_string(b, "section '.data' writable\n")
 
   fmt.sbprintf(b, "cmp_store: db 1 dup(0)\n")
-  for instr in instrs {
+  for &instr in instrs {
     if instr.instr == .store {
       cm.builder_append_string(b, instr.name)
+      instr.instr = .assign
+      switch instr.type {
+      case .n_char:
+        fmt.sbprintf(b, ": db %d dup(0)", instr.type_num)
+      case .n_int, .n_ptr:
+        fmt.sbprintf(b, ": dq %d dup(0)", instr.type_num)
+      case .n_none:
+        fmt.eprintln(
+          "this should not have happened but a variable has the type none, we are fucked",
+        )
+        os.exit(1)
+      }
+      cm.builder_append_string(b, "\n")
+    } else if instr.instr == .create {
+      cm.builder_append_string(b, instr.name)
+      instr.instr = .nothing
       switch instr.type {
       case .n_char:
         fmt.sbprintf(b, ": db %d dup(0)", instr.type_num)
@@ -60,14 +73,18 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
   res: strings.Builder
 
   generate_fluf_start(&res)
+  generate_vars(&res, instrs)
 
+
+  cm.builder_append_string(&res, "section '.text' executable\n")
+  cm.builder_append_string(&res, "public main\n")
+  cm.builder_append_string(&res, "main:\n")
   generate_instr(instrs, &res)
   cm.builder_append_string(&res, "  mov rax, 0\n")
   cm.builder_append_string(&res, "  ret\n")
 
-  generate_fluf_end(&res, instrs)
 
-  fmt.println(string(res.buf[:]))
+  // fmt.println(string(res.buf[:]))
   return string(res.buf[:])
 }
 
@@ -102,6 +119,20 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
     if len(instr.params) == 0 && instr.instr == .store do continue
 
     #partial switch instr.instr {
+    case .call:
+      arg_num := get_arg_num_from_call(instr.params[:])
+
+      for i in 0 ..< arg_num {
+        fmt.sbprintf(b, "  pop %s\n", syscall_reg_list[arg_num - i - 1])
+      }
+      fmt.sbprintf(b, "  call %s\n", instr.name)
+
+    // fmt.sbprintf(b, "  extrn '%s' as _%s\n", instr.optional, instr.name)
+
+    case .extrn:
+      fmt.sbprintf(b, "  extrn '%s' as _%s\n", instr.optional, instr.name)
+      fmt.sbprintf(b, "  %s = PLT _%s\n", instr.name, instr.name)
+
     case .eq:
       fmt.sbprintf(b, "  pop r12\n") // num2
       fmt.sbprintf(b, "  pop r13\n") // num1
@@ -137,7 +168,8 @@ generate_instr :: proc(instrs: []cm.n_instrs, b: ^strings.Builder) {
     case .add:
       if instr.name == "" {
         fmt.sbprintf(b, "  pop r15\n")
-        fmt.sbprintf(b, "  add r15, %d\n", instr.val)
+        fmt.sbprintf(b, "  pop r14\n")
+        fmt.sbprintf(b, "  add r15, r14\n")
         fmt.sbprintf(b, "  push r15\n")
       } else {
         fmt.sbprintf(b, "  pop r15\n")

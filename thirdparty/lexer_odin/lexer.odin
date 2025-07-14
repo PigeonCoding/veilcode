@@ -298,8 +298,8 @@ string_to_u8 :: proc(s: ^string) -> Maybe([]u8) {
   return slice.from_ptr(cast(^u8)strings.clone_to_cstring(s^), len(s))
 }
 
-check_type :: proc(l: ^lexer, expected: token_id) -> bool {
-  if l.token.type != expected {
+check_type :: proc(l: ^lexer, expected: token_id, prt: bool = true) -> bool {
+  if l.token.type != expected && prt {
     fmt.eprintfln(
       "%s:%d:%d expected {} but got {}",
       l.file,
@@ -331,6 +331,7 @@ get_token :: proc(l: ^lexer) {
   // defer fmt.println(l.token)
 
   l.token.type = .null_char
+  l.token.charlit = false
   l.token.intlit = 0
   l.token.floatlit = 0
   l.token.str = ""
