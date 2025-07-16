@@ -12,7 +12,6 @@ arr[9] = 'r';
 arr[10] = 'l';
 arr[11] = 'd';
 arr[12] = 10;
-arr[13] = 0;
 
 extrn printf "printf"
-printf(0, &arr)
+printf(0, &arr);

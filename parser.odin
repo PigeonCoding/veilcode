@@ -8,9 +8,9 @@ import "core:strings"
 import lx "thirdparty/lexer_odin"
 
 @(private)
-label_stack: [dynamic]int
+label_stack: [dynamic]uint
 @(private)
-label_counter := 0
+label_counter: uint = 0
 
 peek :: proc(l: lx.lexer) -> lx.token_id {
   b_l: lx.lexer
@@ -34,15 +34,18 @@ parse :: proc(files: []string) -> []cm.n_instrs {
       if l.token.type == .open_brace {
         ins: cm.n_instrs
         ins.instr = .block
+        ins.offset = auto_cast label_counter
+        label_counter += 1
         parse_shit(&l, &ins.params)
         append(&instrs_og, ins)
+        fmt.println(l.token)
       } else {
         parse_shit(&l, &instrs_og)
       }
     }
   }
 
-
+  cm.print_instrs(instrs_og[:])
   return instrs_og[:]
 }
 
@@ -68,6 +71,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
   case .intlit:
     ins.instr = .push
     ins.val = auto_cast l.token.intlit
+    lx.get_token(l)
 
   case .plus_sign:
     ins.instr = .add
@@ -77,9 +81,57 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
       os.exit(1)
     }
 
-    parse_shit(l, instrs)
-    append(instrs, ins)
+    parse_shit(l, &ins.params)
+
+  case .asterisk:
+    ins.instr = .mult
+    lx.get_token(l)
+    if !l.token.charlit && l.token.type != .intlit && l.token.type != .id {
+      fmt.eprintln("didn't expect this token", l.token)
+      os.exit(1)
+    }
+
+    parse_shit(l, &ins.params)
+
+  case .forward_slash:
+    ins.instr = .div
+    lx.get_token(l)
+    if !l.token.charlit && l.token.type != .intlit && l.token.type != .id {
+      fmt.eprintln("didn't expect this token", l.token)
+      os.exit(1)
+    }
+
+    parse_shit(l, &ins.params)
+
+
+  case .minus_sign:
+    ins.instr = .sub
+    lx.get_token(l)
+    if !l.token.charlit && l.token.type != .intlit && l.token.type != .id {
+      fmt.eprintln("didn't expect this token", l.token)
+      os.exit(1)
+    }
+
+    parse_shit(l, &ins.params)
+
+  // case .close_parenthesis, .close_brace:
+  //   return
+
+  case .open_parenthesis:
+    lx.get_token(l)
+    for l.token.type != .close_parenthesis &&
+        l.token.type != .null_char &&
+        l.token.type != .either_end_or_failure {
+      parse_shit(l, instrs)
+    }
+    if !lx.check_type(l, .close_parenthesis) do os.exit(1)
+    lx.get_token(l)
     return
+
+  case .notq:
+    ins.instr = .noteq
+    lx.get_token(l)
+    parse_shit(l, &ins.params)
 
   case .id:
     switch l.token.str {
@@ -125,11 +177,14 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         for l.token.type != .semicolon &&
             l.token.type != .null_char &&
             l.token.type != .either_end_or_failure {
-          parse_shit(l, instrs)
+          // parse_shit(l, instrs)
+          parse_shit(l, &ins.params)
         }
       } else {
         ins.instr = .create
       }
+
+      lx.get_token(l)
 
     case "extrn":
       ins.instr = .extrn
@@ -141,6 +196,110 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         lx.get_token(l)
         ins.optional = l.token.str
       }
+      lx.get_token(l)
+
+
+    case "if":
+      ins.instr = .if_
+      ins.offset = auto_cast label_counter
+      if_jmp := label_counter
+      // append(&label_stack, label_counter)
+      label_counter += 1
+
+      lx.get_token(l)
+      if !lx.check_type(l, .open_parenthesis) do os.exit(1)
+      lx.get_token(l)
+
+      for l.token.type != .close_parenthesis &&
+          l.token.type != .null_char &&
+          l.token.type != .either_end_or_failure {   // l.token.type != .open_brace &&
+
+        parse_shit(l, &ins.params)
+      }
+      lx.get_token(l)
+      // fmt.println("--", l.token)
+
+      append(instrs, ins)
+
+
+      if !lx.check_type(l, .open_brace) do os.exit(1)
+      ins2: cm.n_instrs
+      ins2.instr = .block
+      ins2.offset = auto_cast label_counter
+      label_counter += 1
+      lx.get_token(l)
+      // fmt.println("-------------------", l.token)
+      for l.token.type != .close_brace &&
+          l.token.type != .null_char &&
+          l.token.type != .either_end_or_failure {
+        parse_shit(l, &ins2.params)
+      }
+      append(instrs, ins2)
+
+      if !lx.check_type(l, .close_brace) do os.exit(1)
+
+      lx.get_token(l)
+      if l.token.str == "else" {
+
+        lx.get_token(l)
+        if !lx.check_type(l, .open_brace) do os.exit(1)
+
+        // tmp := pop(&label_stack)
+
+        ins3: cm.n_instrs
+        ins3.instr = .jmp
+        ins3.offset = auto_cast label_counter
+        else_jmp := label_counter
+        // append(&label_stack, auto_cast ins3.offset)
+        label_counter += 1
+
+        append(instrs, ins3)
+
+        // ---------------------------
+
+        ins3.instr = .label
+        ins3.offset = auto_cast if_jmp
+        append(instrs, ins3)
+
+        // ---------------------------
+
+        ins3.instr = .block
+        ins3.offset = auto_cast label_counter
+        label_counter += 1
+
+        // lx.get_token(l)
+        if !lx.check_type(l, .open_brace) do os.exit(1)
+
+        lx.get_token(l)
+        for l.token.type != .close_brace &&
+            l.token.type != .null_char &&
+            l.token.type != .either_end_or_failure {
+          parse_shit(l, &ins3.params)
+        }
+
+        if !lx.check_type(l, .close_brace) do os.exit(1)
+        lx.get_token(l)
+
+        append(instrs, ins3)
+
+        {
+          ins4: cm.n_instrs
+          ins4.instr = .label
+          ins4.offset = auto_cast else_jmp
+
+          append(instrs, ins4)
+        }
+      } else {
+
+        ins3: cm.n_instrs
+        ins3.instr = .label
+        ins3.offset = auto_cast if_jmp
+        append(instrs, ins3)
+
+      }
+
+      return
+
 
     case:
       if var, f := var_exists(l.token.str).?; f {
@@ -170,9 +329,17 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
           for l.token.type != .semicolon &&
               l.token.type != .null_char &&
               l.token.type != .either_end_or_failure {
-            parse_shit(l, instrs)
+            // parse_shit(l, instrs)
+            parse_shit(l, &ins.params)
           }
+
+          lx.get_token(l)
         }
+        // append(instrs, ins)
+        // if !lx.check_type(l, .semicolon) do os.exit(1)
+        // lx.get_token(l)
+        // return
+        // fmt.println(l.token)
 
 
       } else if fn, p := fn_exists(l.token.str).?; p {
@@ -183,13 +350,17 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         if !lx.check_type(l, .open_parenthesis) do os.exit(1)
         lx.get_token(l)
         for l.token.type != .close_parenthesis &&
-            l.token.type != .semicolon &&
             l.token.type != .null_char &&
-            l.token.type != .either_end_or_failure {
+            l.token.type != .either_end_or_failure {   // l.token.type != .semicolon &&
           parse_shit(l, &ins.params)
           if l.token.type == .comma_char do lx.get_token(l)
           // fmt.println(l.token)
         }
+
+        if !lx.check_type(l, .close_parenthesis) do os.exit(1)
+        lx.get_token(l)
+        if !lx.check_type(l, .semicolon) do os.exit(1)
+        lx.get_token(l)
 
 
       } else {
@@ -206,12 +377,11 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
     lx.get_token(l)
     parse_shit(l, instrs)
     instrs[len(instrs) - 1].ptr = true
-    // fmt.println(instrs[len(instrs) - 1])
     return
 
-  case .semicolon:
-    lx.get_token(l)
-    parse_shit(l, instrs)
+  // case .semicolon:
+  //   lx.get_token(l)
+  //   return
 
   // case .either_end_or_failure:
   //   return
@@ -220,6 +390,9 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
     if l.token.charlit {
       ins.instr = .push
       ins.val = auto_cast l.token.type
+      lx.get_token(l)
+      // fmt.println(peek(l^))
+
     } else {
       // unknown token encountered
       fmt.eprintfln("%s:%d:%d unknown {}", l.file, l.row + 1, l.col, l.token)
@@ -230,8 +403,10 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
 
   // fmt.println(l.token)
   append(instrs, ins)
-  lx.get_token(l)
+  // lx.get_token(l)
 }
+
+// ---------------------------------------------------------------------------
 
 // get_pushed_shit :: proc(instrs: []cm.n_instrs, l: ^lx.lexer) -> cm.n_instrs {
 //   ins: cm.n_instrs

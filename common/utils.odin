@@ -29,6 +29,26 @@ string_to_type :: proc(s: string) -> n_types {
   }
 }
 
+print_instrs :: proc(instrs: []n_instrs, indent: u8 = 0) {
+  for i in instrs {
+    for u in 0 ..< indent do fmt.print("   ")
+    fmt.printfln(
+      "instr: {}, name: '%s', type: {}, type_num: %d, offset: %d, val: %d, flt: %f, ptr: {}, optional: '%s'",
+      i.instr,
+      i.name,
+      i.type,
+      i.type_num,
+      i.offset,
+      i.val,
+      i.flt,
+      i.ptr,
+      i.optional
+    )
+    if len(i.params) > 0 {
+      print_instrs(i.params[:], indent + 1)
+    }
+  }
+}
 
 // fn_is_unique :: proc(f: ^fn, fns: []fn) -> bool {
 //   for &func in fns {
