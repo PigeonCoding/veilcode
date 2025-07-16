@@ -73,6 +73,11 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
     ins.val = auto_cast l.token.intlit
     lx.get_token(l)
 
+  case .dqstring:
+    ins.instr = .push
+    ins.optional = l.token.str
+    lx.get_token(l)
+
   case .plus_sign:
     ins.instr = .add
     lx.get_token(l)
@@ -182,6 +187,12 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         }
       } else {
         ins.instr = .create
+      }
+
+      for &i in ins.params {
+        if i.instr == .push && i.optional != "" && len(ins.params) == 1 {
+          ins.type_num = auto_cast len(i.optional)
+        }
       }
 
       lx.get_token(l)

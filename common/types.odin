@@ -30,6 +30,7 @@ n_types :: enum {
   n_ptr,
   n_int,
   n_char,
+  n_str,
 }
 
 // TODO: support floats in code

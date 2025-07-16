@@ -18,8 +18,8 @@ string_to_type :: proc(s: string) -> n_types {
     return .n_char
   case "ptr":
     return .n_ptr
-  // case "string":
-  //   return .n_string
+  case "str":
+    return .n_str
   // case "bool":
   //   return .n_bool
   // case "float":

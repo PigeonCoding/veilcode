@@ -1,17 +1,4 @@
-let arr: [14]char;
-arr[0] = 'H';
-arr[1] = 'e';
-arr[2] = 'l';
-arr[3] = 'l';
-arr[4] = 'o';
-arr[5] = ',';
-arr[6] = ' ';
-arr[7] = 'W';
-arr[8] = 'o';
-arr[9] = 'r';
-arr[10] = 'l';
-arr[11] = 'd';
-arr[12] = 10;
+let hello: str = "Hello, World\n";
 
 extrn printf "printf"
-printf(0, &arr);
+printf(0, &hello);

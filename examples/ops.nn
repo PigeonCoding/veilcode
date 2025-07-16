@@ -4,13 +4,9 @@ let c: int = 06 * 10;
 let d: int = 100 / 4;
 
 // will be replaced when strs eventually are implemented
-let future_str: [4]char;
-future_str[0] = '%';
-future_str[1] = 'd';
-future_str[2] =  10 ;
- 
+let future_str: str = "%d\n";
 extrn printf "printf"
-printf(0, &future_str[0], a);
-printf(0, &future_str[0], b);
-printf(0, &future_str[0], c);
-printf(0, &future_str[0], d);
+printf(0, &future_str, a);
+printf(0, &future_str, b);
+printf(0, &future_str, c);
+printf(0, &future_str, d);

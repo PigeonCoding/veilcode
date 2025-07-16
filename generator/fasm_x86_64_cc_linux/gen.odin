@@ -26,13 +26,46 @@ syscall_reg_list := [?]([]string) {
   []string{"r11", "r11D", "r11W", "r11B"},
 }
 @(private)
-sys_reg_offset := [?]int{-1, 0, 0, 3}
+sys_reg_offset := [?]int{-1, 0, 0, 3, 5}
 @(private)
-conv_list := [?]string{"none", "QWORD", "QWORD", "BYTE"}
-@(private)
-open_bracket := [?]byte{'[', ' '}
-close_bracket := [?]byte{'}', ' '}
+conv_list := [?]string{"none", "QWORD", "QWORD", "BYTE", "QWORD"}
 
+@(private)
+s: strings.Builder
+
+escape_str :: proc(strin: string) -> string {
+  // slice.from_ptr(cast(^u8)strings.clone_to_cstring(s^), len(s))
+  strings.builder_reset(&s)
+  i := 0
+  for i < len(strin) {
+    ub := cast(u8)strin[i]
+    if ub == '\\' {
+      i += 1
+      ub = cast(u8)strin[i]
+      switch ub {
+      case 'n':
+        strings.write_byte(&s, '\n')
+      case 'r':
+        strings.write_byte(&s, '\r')
+      case 't':
+        strings.write_byte(&s, '\t')
+      case:
+        fmt.eprintfln("unknown escape character '%c'", ub)
+        os.exit(1)
+      } 
+    } else {
+      strings.write_byte(&s, ub)
+    }
+    i += 1
+  }
+
+  str, err := strings.clone(string(s.buf[:]))
+  if err != .None {
+    fmt.eprintln("error in copying string builder", err)
+    os.exit(1)
+  }
+  return str
+}
 // @(private)
 // conv_list_bits := [?]int{-1, 64, 64, 8}
 // @(private)
@@ -53,7 +86,6 @@ close_bracket := [?]byte{'}', ' '}
 
 generate_fluf_start :: proc(b: ^strings.Builder) {
   cm.builder_append_string(b, "format ELF64\n")
-
 }
 
 generate_vars :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
@@ -74,6 +106,14 @@ generate_vars :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
         for i in 0 ..< instr.type_num {
           fmt.sbprintf(b, "%s_%d: dq 0\n", instr.name, i)
         }
+      case .n_str:
+        instr.instr = .nothing
+        str_i := instr.params[0]
+        tmp := escape_str(str_i.optional)
+        for i in 0 ..< len(tmp) {
+          fmt.sbprintf(b, "%s_%d: db %d\n", instr.name, i, tmp[i])
+        }
+        fmt.sbprintf(b, "%s_%d: db 0\n", instr.name, instr.type_num)
       case .n_none:
         fmt.eprintln(
           "this should not have happened but a variable has the type none, we are fucked",
@@ -94,6 +134,8 @@ generate_vars :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
           fmt.sbprintf(b, "%s_%d: dq 0\n", instr.name, i)
         }
 
+      case .n_str:
+        fmt.assertf(false, "dynamic string alloc not supported for now")
       case .n_none:
         fmt.eprintln(
           "this should not have happened but a variable has the type none, we are fucked",
@@ -134,6 +176,8 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
   cm.builder_append_string(&res, "public main\n")
   cm.builder_append_string(&res, "main:\n")
 
+  fmt.println("-------------------------------------")
+  cm.print_instrs(instrs)
   generate_instr(&res, instrs)
 
   cm.builder_append_string(&res, "  mov rax, 0\n")
@@ -163,6 +207,7 @@ get_arg_num_from_call :: proc(instrs: []cm.n_instrs) -> int {
   return arg_num
 }
 
+// TODO: variadic arguments
 // r15: ops
 // r13: used for derefrencing 
 // r12, r11: one of stuff like comparisons
@@ -304,9 +349,9 @@ generate_instr :: proc(
         assert(false, "div pushed")
       }
 
-      // fmt.println(string(b.buf[:]))
+    // fmt.println(string(b.buf[:]))
 
-      // os.exit(1)
+    // os.exit(1)
 
 
     case .push:
@@ -324,16 +369,32 @@ generate_instr :: proc(
             fmt.sbprintf(b, "  mov %s, %d\n", parent_ptr.name, instr.val)
           }
         } else {
-          fmt.sbprintf(
-            b,
-            "  mov %s%c%s_%d%c, %d\n",
-            conv_list[auto_cast parent_ptr.type],
-            parent_ptr.ptr ? ' ' : '[',
-            parent_ptr.name,
-            parent_ptr.offset,
-            parent_ptr.ptr ? ' ' : ']',
-            instr.val,
-          )
+
+          if instr.optional == "" {
+            fmt.sbprintf(
+              b,
+              "  mov %s%c%s_%d%c, %d\n",
+              conv_list[auto_cast parent_ptr.type],
+              parent_ptr.ptr ? ' ' : '[',
+              parent_ptr.name,
+              parent_ptr.offset,
+              parent_ptr.ptr ? ' ' : ']',
+              instr.val,
+            )
+          } else {
+            fmt.sbprintf(
+              b,
+              "  mov %s%c%s_%d%c, \"%s\"\n",
+              conv_list[auto_cast parent_ptr.type],
+              parent_ptr.ptr ? ' ' : '[',
+              parent_ptr.name,
+              parent_ptr.offset,
+              parent_ptr.ptr ? ' ' : ']',
+              instr.optional,
+            )
+
+          }
+
         }
 
       } else {
