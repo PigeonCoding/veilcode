@@ -32,13 +32,21 @@ parse :: proc(files: []string) -> []cm.n_instrs {
 
     for l.token.type != .null_char && l.token.type != .either_end_or_failure {
       if l.token.type == .open_brace {
+        fmt.println("entered")
         ins: cm.n_instrs
         ins.instr = .block
         ins.offset = auto_cast label_counter
         label_counter += 1
-        parse_shit(&l, &ins.params)
+        lx.get_token(&l)
+        for l.token.type != .close_brace &&
+            l.token.type != .null_char &&
+            l.token.type != .either_end_or_failure {
+          parse_shit(&l, &ins.params)
+        }
+
         append(&instrs_og, ins)
-        fmt.println(l.token)
+        lx.get_token(&l)
+        fmt.println("ended")
       } else {
         parse_shit(&l, &instrs_og)
       }
@@ -75,6 +83,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
 
   case .dqstring:
     ins.instr = .push
+    ins.type = .n_str
     ins.optional = l.token.str
     lx.get_token(l)
 
@@ -233,8 +242,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         parse_shit(l, &ins.params)
       }
       lx.get_token(l)
-      // fmt.println("--", l.token)
-
+      
       append(instrs, ins)
 
 

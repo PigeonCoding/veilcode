@@ -6,7 +6,7 @@ import "core:os"
 import "core:strings"
 
 @(private)
-counter := 0
+counter: uint = 0
 @(private)
 syscall_reg_list := [?]([]string) {
   []string{"rax", "eax", "ax", "al"},
@@ -92,6 +92,7 @@ generate_vars :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
 
   cm.builder_append_string(b, "section '.data' writable\n")
 
+
   fmt.sbprintf(b, "cmp_0 : dq 0\n")
   fmt.sbprintf(b, "tmp_0 : dq 0\n\n")
   for &instr in instrs {
@@ -148,7 +149,32 @@ generate_vars :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
 
     }
   }
+}
 
+generate_strs :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
+  for &instr in instrs {
+
+    if instr.instr == .push && instr.type == .n_str {
+      // str_i := instr.params[0]
+      tmp := escape_str(instr.optional)
+      cc := counter
+      counter += 1
+
+      fmt.sbprintf(b, "str%d_len____: db %d\n", cc, len(tmp))
+      for u in 0 ..< len(tmp) {
+        fmt.sbprintf(b, "str%d_%d: db %d\n", cc, u, tmp[u])
+      }
+      fmt.sbprintf(b, "str%d_%d: db 0\n", cc, len(tmp))
+
+      instr.instr = .load
+      instr.name = fmt.tprintf("str%d", cc)
+      instr.type_num = len(tmp)
+      instr.ptr = true
+    }
+
+
+    if len(instr.params) > 0 do generate_strs(b, instr.params[:])
+  }
 }
 
 generate_blocks :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
@@ -166,9 +192,16 @@ generate_blocks :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
 // TODO: printf only supportd 32bit ints minimum
 generate :: proc(instrs: []cm.n_instrs) -> string {
   res: strings.Builder
+  fmt.println("-------------------------------------")
 
   generate_fluf_start(&res)
   generate_vars(&res, instrs)
+  generate_strs(&res, instrs)
+
+  {
+  // fmt.println(string(res.buf[:]))
+    // os.exit(1)
+  }
 
 
   cm.builder_append_string(&res, "section '.text' executable\n")
@@ -178,7 +211,6 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
   cm.builder_append_string(&res, "public main\n")
   cm.builder_append_string(&res, "main:\n")
 
-  fmt.println("-------------------------------------")
   cm.print_instrs(instrs)
   generate_instr(&res, instrs)
 
@@ -451,7 +483,7 @@ generate_instr :: proc(
       // // instr.type = parent_ptr.type
       old_off := instr.offset
       instr.offset = -14
-      
+
       fmt.sbprintf(b, "  mov QWORD[cmp_0], 0\n")
       generate_instr(b, instr.params[:], &instr)
       fmt.sbprintf(b, "  cmp BYTE[cmp_0], 1\n")
