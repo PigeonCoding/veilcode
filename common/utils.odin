@@ -10,6 +10,13 @@ builder_append_string :: proc(b: ^strings.Builder, str: string) {
   fmt.sbprint(b, str)
 }
 
+str_check :: proc(s: ^string) {
+  switch s^ {
+  case "test":
+    s^ = "test____this_should_be_fixed_maybe"
+  }
+}
+
 string_to_type :: proc(s: string) -> n_types {
   switch s {
   case "int":
@@ -42,7 +49,7 @@ print_instrs :: proc(instrs: []n_instrs, indent: u8 = 0) {
       i.val,
       i.flt,
       i.ptr,
-      i.optional
+      i.optional,
     )
     if len(i.params) > 0 {
       print_instrs(i.params[:], indent + 1)

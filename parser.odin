@@ -53,7 +53,7 @@ parse :: proc(files: []string) -> []cm.n_instrs {
     }
   }
 
-  cm.print_instrs(instrs_og[:])
+  // cm.print_instrs(instrs_og[:])
   return instrs_og[:]
 }
 
@@ -75,6 +75,8 @@ fn_exists :: proc(name: string) -> Maybe(cm.n_instrs) {
 
 parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
   ins: cm.n_instrs
+  cm.str_check(&l.token.str)
+
   #partial switch auto_cast l.token.type {
   case .intlit:
     ins.instr = .push
@@ -159,10 +161,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
       if !lx.check_type(l, .id) do os.exit(1)
 
       // can't use the word test appearently with fasm
-      switch l.token.str {
-      case "test":
-        l.token.str = "test____this_should_be_fixed_maybe"
-      }
+      cm.str_check(&l.token.str)
 
       ins.instr = .store
 
@@ -242,7 +241,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         parse_shit(l, &ins.params)
       }
       lx.get_token(l)
-      
+
       append(instrs, ins)
 
 

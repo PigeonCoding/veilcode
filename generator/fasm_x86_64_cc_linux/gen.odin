@@ -5,8 +5,38 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
+prt_asm := false
+
 @(private)
 counter: uint = 0
+@(private)
+RAX :: 0
+@(private)
+RDI :: 1
+@(private)
+RSI :: 2
+@(private)
+RDX :: 3
+@(private)
+R10 :: 4
+@(private)
+R8 :: 5
+@(private)
+R9 :: 6
+@(private)
+RBX :: 7
+@(private)
+RCX :: 8
+@(private)
+R15 :: 9
+@(private)
+R14 :: 10
+@(private)
+R13 :: 11
+@(private)
+R12 :: 12
+@(private)
+R11 :: 13
 @(private)
 syscall_reg_list := [?]([]string) {
   []string{"rax", "eax", "ax", "al"},
@@ -192,14 +222,13 @@ generate_blocks :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
 // TODO: printf only supportd 32bit ints minimum
 generate :: proc(instrs: []cm.n_instrs) -> string {
   res: strings.Builder
-  fmt.println("-------------------------------------")
 
   generate_fluf_start(&res)
   generate_vars(&res, instrs)
   generate_strs(&res, instrs)
 
   {
-  // fmt.println(string(res.buf[:]))
+    // fmt.println(string(res.buf[:]))
     // os.exit(1)
   }
 
@@ -211,14 +240,15 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
   cm.builder_append_string(&res, "public main\n")
   cm.builder_append_string(&res, "main:\n")
 
-  cm.print_instrs(instrs)
+  // cm.print_instrs(instrs)
   generate_instr(&res, instrs)
 
   cm.builder_append_string(&res, "  mov rax, 0\n")
   cm.builder_append_string(&res, "  ret\n")
 
-
-  fmt.println(string(res.buf[:]))
+  if prt_asm {
+    fmt.println(string(res.buf[:]))
+  }
   // os.exit(1)
   return string(res.buf[:])
 }
@@ -465,7 +495,22 @@ generate_instr :: proc(
             )
           }
         } else {
-          assert(false, "unreachable 1")
+          fmt.sbprintf(
+            b,
+            "  mov %s, [%s_%d]\n",
+            syscall_reg_list[R14][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
+            instr.name,
+            instr.offset,
+          )
+
+          fmt.sbprintf(
+            b,
+            "  mov %s[%s_%d], %s\n",
+            conv_list[auto_cast parent_ptr.type],
+            parent_ptr.name,
+            parent_ptr.offset,
+            syscall_reg_list[R14][instr.ptr ? 0 : sys_reg_offset[auto_cast parent_ptr.type]],
+          )
         }
 
       } else {
@@ -523,11 +568,22 @@ generate_instr :: proc(
             fmt.sbprintf(b, "  setne BYTE[cmp_0]\n")
           }
         } else {
-          assert(false, "unreachable 2")
-          // generate_instr(b, instr.params[:])
-          // fmt.sbprintf(b, "  pop r12\n") // num2
-          // fmt.sbprintf(b, "  pop r11\n") // num1
-          // fmt.sbprintf(b, "  sete BYTE[cmp_0]\n")
+
+          instr.name = ""
+          instr.type = parent_ptr.type
+          instr.offset = -13
+
+          generate_instr(b, instr.params[:], &instr)
+
+          fmt.sbprintf(
+            b,
+            "  cmp %s[%s_%d], %s\n",
+            conv_list[auto_cast parent_ptr.type],
+            parent_ptr.name,
+            parent_ptr.offset,
+            syscall_reg_list[R13][sys_reg_offset[auto_cast parent_ptr.type]],
+          ) // num1 < = > num2
+          fmt.sbprintf(b, "  setne BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
         }
       } else {
         generate_instr(b, instr.params[:])
@@ -552,11 +608,21 @@ generate_instr :: proc(
             fmt.sbprintf(b, "  sete BYTE[cmp_0]\n")
           }
         } else {
-          assert(false, "unreachable 2")
-          // generate_instr(b, instr.params[:])
-          // fmt.sbprintf(b, "  pop r12\n") // num2
-          // fmt.sbprintf(b, "  pop r11\n") // num1
-          // fmt.sbprintf(b, "  setne BYTE[cmp_0]\n")
+          instr.name = ""
+          instr.type = parent_ptr.type
+          instr.offset = -13
+
+          generate_instr(b, instr.params[:], &instr)
+
+          fmt.sbprintf(
+            b,
+            "  cmp %s[%s_%d], %s\n",
+            conv_list[auto_cast parent_ptr.type],
+            parent_ptr.name,
+            parent_ptr.offset,
+            syscall_reg_list[R13][sys_reg_offset[auto_cast parent_ptr.type]],
+          ) // num1 < = > num2
+          fmt.sbprintf(b, "  sete BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
         }
       } else {
         generate_instr(b, instr.params[:])

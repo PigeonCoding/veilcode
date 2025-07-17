@@ -1,4 +1,2 @@
-let hello: str = "Hello, World\n";
-
 extrn printf "printf"
-printf(0, &hello);
+printf(0, "Hello World\n");

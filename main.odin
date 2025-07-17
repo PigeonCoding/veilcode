@@ -38,9 +38,11 @@ main :: proc() {
   fl_cont: fg.flag_container
   fg.add_flag(&fl_cont, "target", "", "sets the desired target (-target list for all the targets)")
   fg.add_flag(&fl_cont, "h", false, "shows this message")
-  fg.add_flag(&fl_cont, "out", "", "sets the name dor the output file")
+  fg.add_flag(&fl_cont, "out", "", "sets the name for the output file")
   fg.add_flag(&fl_cont, "nostd", false, "disables the standard lib")
   fg.add_flag(&fl_cont, "root_path", "", "sets a custom path for the root folder of veilcode")
+  fg.add_flag(&fl_cont, "ir", false, "prints the ir for a given program")
+  fg.add_flag(&fl_cont, "asm", false, "prints the assembly for a given program")
 
   fg.init_container(&fl_cont)
 
@@ -50,6 +52,7 @@ main :: proc() {
 
   if fg.get_flag_value(&fl_cont, "h") != nil {
     prt_usage(program_name, &fl_cont)
+    os.exit(0)
   }
 
   if target_selected := fg.get_flag_value(&fl_cont, "target"); target_selected != nil {
@@ -70,6 +73,10 @@ main :: proc() {
 
   if fg.get_flag_value(&fl_cont, "nostd") != nil {
     nostd = true
+  }
+
+  if fg.get_flag_value(&fl_cont, "asm") != nil {
+    f86_64cclinux.prt_asm = true
   }
 
   if root := fg.get_flag_value(&fl_cont, "root_path"); root != nil {
@@ -109,6 +116,12 @@ main :: proc() {
   }
 
   instrs := parse(files_to_parse[:])
+
+  if fg.get_flag_value(&fl_cont, "ir") != nil {
+    cm.print_instrs(instrs)
+    os.exit(0)
+  }
+
   // fmt.println(instrs)
 
   pros: os2.Process_Desc

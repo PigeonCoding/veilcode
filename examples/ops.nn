@@ -1,12 +1,18 @@
-let a: int = 34 + 35;
-let b: int = 10 - 05;
-let c: int = 06 * 10;
-let d: int = 100 / 4;
+let a: int  = 034  +   35;
+let b: int  = 010  -   05;
+let c: int  = 006  *   10;
+let d: int  = 100  /   04;
+let e: char = 002  !=  01;
+let f: char = 002  ==  02;
+let g: int  = 002  !=  02;
+let h: char = 002  ==  01;
 
-// will be replaced when strs eventually are implemented
-let future_str: str = "%d\n";
 extrn printf "printf"
-printf(0, &future_str, a);
-printf(0, &future_str, b);
-printf(0, &future_str, c);
-printf(0, &future_str, d);
+printf(0, "%d\n", a);
+printf(0, "%d\n", b);
+printf(0, "%d\n", c);
+printf(0, "%d\n", d);
+printf(0, "%d\n", e);
+printf(0, "%d\n", f);
+printf(0, "%d\n", g);
+printf(0, "%d\n", h);
