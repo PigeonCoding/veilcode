@@ -34,15 +34,17 @@ main :: proc() {
   }
 
   nostd := false
+  run := false
 
   fl_cont: fg.flag_container
   fg.add_flag(&fl_cont, "target", "", "sets the desired target (-target list for all the targets)")
   fg.add_flag(&fl_cont, "h", false, "shows this message")
   fg.add_flag(&fl_cont, "out", "", "sets the name for the output file")
-  fg.add_flag(&fl_cont, "nostd", false, "disables the standard lib")
+  // fg.add_flag(&fl_cont, "nostd", false, "disables the standard lib")
   fg.add_flag(&fl_cont, "root_path", "", "sets a custom path for the root folder of veilcode")
   fg.add_flag(&fl_cont, "ir", false, "prints the ir for a given program")
   fg.add_flag(&fl_cont, "asm", false, "prints the assembly for a given program")
+  fg.add_flag(&fl_cont, "run", false, "runs the program after compilation")
 
   fg.init_container(&fl_cont)
 
@@ -67,31 +69,25 @@ main :: proc() {
     }
   }
 
-  if out := fg.get_flag_value(&fl_cont, "out"); out != nil {
-    file_out = (cast(^string)out)^
-  }
+  if out := fg.get_flag_value(&fl_cont, "out"); out != nil do file_out = (cast(^string)out)^
 
-  if fg.get_flag_value(&fl_cont, "nostd") != nil {
-    nostd = true
-  }
+  // if fg.get_flag_value(&fl_cont, "nostd") != nil do nostd = true
 
-  if fg.get_flag_value(&fl_cont, "asm") != nil {
-    f86_64cclinux.prt_asm = true
-  }
+  if fg.get_flag_value(&fl_cont, "run") != nil do run = true
 
-  if root := fg.get_flag_value(&fl_cont, "root_path"); root != nil {
-    root_path = (cast(^string)root)^
-  }
+  if fg.get_flag_value(&fl_cont, "asm") != nil do f86_64cclinux.prt_asm = true
+
+  if root := fg.get_flag_value(&fl_cont, "root_path"); root != nil do root_path = (cast(^string)root)^
 
   files_to_parse: [dynamic]string
-  if !nostd {
-    switch target {
-    case .none:
-      fmt.assertf(false, "shouldn't happen")
-    case .f86_64cclinux:
-      append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
-    }
-  }
+  // if !nostd {
+  //   switch target {
+  //   case .none:
+  //     fmt.assertf(false, "shouldn't happen")
+  //   case .f86_64cclinux:
+  //     append(&files_to_parse, strings.concatenate({root_path, "/std", "/linux_std.nn"}))
+  //   }
+  // }
 
   for n in fl_cont.remaining {
     if n == "---" do break
@@ -102,14 +98,14 @@ main :: proc() {
       os.exit(1)
     }
 
-    if strings.ends_with(n, ".nn") {
+    if strings.ends_with(n, ".vc") {
       append(&files_to_parse, n)
     } else {
       fmt.eprintln("unknown file extention for", n, "skipping")
     }
   }
 
-  if (nostd && len(files_to_parse) == 0) || (!nostd && len(files_to_parse) == 1) {
+  if len(files_to_parse) < 1 {
     fmt.eprintln("no file provided")
     prt_usage(program_name, &fl_cont)
     os.exit(1)
@@ -121,8 +117,6 @@ main :: proc() {
     cm.print_instrs(instrs)
     os.exit(0)
   }
-
-  // fmt.println(instrs)
 
   pros: os2.Process_Desc
   to_write: string
@@ -172,6 +166,16 @@ main :: proc() {
     //   // fmt.assertf(false, "will have to rewrite stb_c_lexer in odin fot it to work")
     //   fmt.println(file_out)
     //   if bd.exec_and_run_sync([]string{strings.concatenate([]string{root_path, "/external/win64/tcc/tcc.exe"}), strings.concatenate({file_out, ".c"}), "-g", "-o", file_out, strings.concatenate({"-L", root_path, "/external/linux/tcc/tcc/lib/tcc"})}) != nil do os.exit(1)
+    }
+  }
+
+  if run {
+    switch target {
+    case .none:
+      fmt.assertf(false, "shouldn't happen twice")
+    case .f86_64cclinux:
+      if bd.exec_and_run_sync({"./", file_out}) != nil do os.exit(1)
+
     }
   }
 }

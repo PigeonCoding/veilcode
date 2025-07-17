@@ -322,6 +322,10 @@ init_lexer :: proc(file: string) -> lexer {
   str, _ := read_file(file)
   str, _ = strings.replace_all(str, "\r\n", "\n")
   l.content, _ = string_to_u8(&str).? // TODO: maybe check this?
+  if len(l.content) == 0 {
+    fmt.println("file", file, "either does not exist or is not readable")
+    os.exit(1)
+  }
   delete(str)
 
   return l
@@ -354,7 +358,7 @@ get_token :: proc(l: ^lexer) {
     return
   }
 
-  if is_alphabetical(l.content[l.cursor]) {
+  if is_alphabetical(l.content[l.cursor]) || l.content[l.cursor] == '$' {
     s := l.cursor
     l.cursor += 1
     for l.cursor < len(l.content) && is_alphanumerical(l.content[l.cursor]) do l.cursor += 1

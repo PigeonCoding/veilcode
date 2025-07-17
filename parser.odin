@@ -27,6 +27,7 @@ instrs_og: [dynamic]cm.n_instrs
 
 parse :: proc(files: []string) -> []cm.n_instrs {
   for file in files {
+    // fmt.println(file)
     l: lx.lexer = lx.init_lexer(file)
     lx.get_token(&l)
 
@@ -321,6 +322,13 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
 
       }
 
+      return
+
+    case "$include":
+      lx.get_token(l)
+      if !lx.check_type(l, .dqstring) do os.exit(1)
+      parse([]string{strings.concatenate({l.token.str, ".vc"})})
+      lx.get_token(l)
       return
 
 
