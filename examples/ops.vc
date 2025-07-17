@@ -1,13 +1,15 @@
+$include "../std/libc"
+
 let a: int  = 034  +   35;
 let b: int  = 010  -   05;
 let c: int  = 006  *   10;
 let d: int  = 100  /   04;
-let e: char = 002  !=  01;
+let e: int  = 10   %   07;
 let f: char = 002  ==  02;
-let g: int  = 002  !=  02;
+let g: char = 002  !=  02;
 let h: char = 002  ==  01;
+let i: char = 002  !=  01;
 
-extrn printf "printf"
 printf(0, "%d\n", a);
 printf(0, "%d\n", b);
 printf(0, "%d\n", c);
@@ -16,3 +18,4 @@ printf(0, "%d\n", e);
 printf(0, "%d\n", f);
 printf(0, "%d\n", g);
 printf(0, "%d\n", h);
+printf(0, "%d\n", i);

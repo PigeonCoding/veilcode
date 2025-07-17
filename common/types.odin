@@ -12,6 +12,7 @@ n_instrs_enum :: enum {
   sub,
   mult,
   div,
+  mod,
   jmp,
   nothing,
   if_,

@@ -1,2 +1,3 @@
-extrn printf "printf"
+$include "../std/libc"
+
 printf(0, "Hello World\n");

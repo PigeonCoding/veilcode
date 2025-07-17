@@ -377,7 +377,7 @@ generate_instr :: proc(
         fmt.sbprintf(
           b,
           "  xchg %s, %s%c%s_%d%c\n",
-          syscall_reg_list[0][sys_reg_offset[auto_cast instr.type]],
+          syscall_reg_list[RAX][sys_reg_offset[auto_cast instr.type]],
           conv_list[auto_cast parent_ptr.type],
           parent_ptr.ptr ? ' ' : '[',
           parent_ptr.name,
@@ -398,7 +398,7 @@ generate_instr :: proc(
         fmt.sbprintf(
           b,
           "  xchg %s, %s%c%s_%d%c\n",
-          syscall_reg_list[0][sys_reg_offset[auto_cast instr.type]],
+          syscall_reg_list[RAX][sys_reg_offset[auto_cast instr.type]],
           conv_list[auto_cast parent_ptr.type],
           parent_ptr.ptr ? ' ' : '[',
           parent_ptr.name,
@@ -412,9 +412,50 @@ generate_instr :: proc(
         assert(false, "div pushed")
       }
 
-    // fmt.println(string(b.buf[:]))
+    case .mod:
+      if pptr {
+        instr.name = ""
+        instr.type = parent_ptr.type
+        instr.offset = -2
+        fmt.sbprintf(b, "  push rax\n")
+        generate_instr(b, instr.params[:], &instr)
+        fmt.sbprintf(
+          b,
+          "  xchg %s, %s%c%s_%d%c\n",
+          syscall_reg_list[RAX][sys_reg_offset[auto_cast instr.type]],
+          conv_list[auto_cast parent_ptr.type],
+          parent_ptr.ptr ? ' ' : '[',
+          parent_ptr.name,
+          parent_ptr.offset,
+          parent_ptr.ptr ? ' ' : ']',
+        )
+        fmt.sbprintf(b, "  cqo\n")
+        fmt.sbprintf(
+          b,
+          "  idiv %s%c%s_%d%c\n",
+          conv_list[auto_cast parent_ptr.type],
+          parent_ptr.ptr ? ' ' : '[',
+          parent_ptr.name,
+          parent_ptr.offset,
+          parent_ptr.ptr ? ' ' : ']',
+          // syscall_reg_list[9][sys_reg_offset[auto_cast instr.type]],
+        )
+        fmt.sbprintf(
+          b,
+          "  xchg %s, %s%c%s_%d%c\n",
+          syscall_reg_list[RDX][sys_reg_offset[auto_cast instr.type]],
+          conv_list[auto_cast parent_ptr.type],
+          parent_ptr.ptr ? ' ' : '[',
+          parent_ptr.name,
+          parent_ptr.offset,
+          parent_ptr.ptr ? ' ' : ']',
+        )
+        fmt.sbprintf(b, "  pop rax\n")
 
-    // os.exit(1)
+
+      } else {
+        assert(false, "div pushed")
+      }
 
 
     case .push:
@@ -470,7 +511,7 @@ generate_instr :: proc(
           if parent_ptr.offset < -1 {
             fmt.sbprintf(
               b,
-              "  ;xor %s, %s\n  mov %s, %c%s_%d%c\n",
+              "  xor %s, %s\n  mov %s, %c%s_%d%c\n",
               syscall_reg_list[-parent_ptr.offset - 2][0],
               syscall_reg_list[-parent_ptr.offset - 2][0],
               syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
