@@ -133,6 +133,11 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
     lx.get_token(l)
     return
 
+  case .eq:
+    ins.instr = .eq
+    lx.get_token(l)
+    parse_shit(l, &ins.params)
+
   case .notq:
     ins.instr = .noteq
     lx.get_token(l)
