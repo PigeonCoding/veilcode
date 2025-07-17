@@ -8,16 +8,13 @@ n_instrs_enum :: enum {
   assign,
   load,
   call,
-  syscall, // TODO: make this a function and just call it probably but still have this maybe?
   add,
   sub,
   mult,
   div,
   jmp,
-  deref,
   nothing,
   if_,
-  // else_,
   label,
   eq,
   noteq,
@@ -45,4 +42,5 @@ n_instrs :: struct {
   ptr:      bool,
   params:   [dynamic]n_instrs,
   optional: string,
+  deref:    bool,
 }

@@ -262,7 +262,7 @@ get_arg_num_from_call :: proc(instrs: []cm.n_instrs) -> int {
       arg_num += get_arg_num_from_call(ins.params[:])
     }
 
-    if ins.instr == .push || ins.instr == .load || ins.instr == .deref {
+    if ins.instr == .push || ins.instr == .load {
       arg_num += 1
     }
 
@@ -468,11 +468,10 @@ generate_instr :: proc(
     case .load:
       if pptr {
         if parent_ptr.offset < 0 {
-
           if parent_ptr.offset < -1 {
             fmt.sbprintf(
               b,
-              "  xor %s, %s\n  mov %s, %c%s_%d%c\n",
+              "  ;xor %s, %s\n  mov %s, %c%s_%d%c\n",
               syscall_reg_list[-parent_ptr.offset - 2][0],
               syscall_reg_list[-parent_ptr.offset - 2][0],
               syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
@@ -482,6 +481,29 @@ generate_instr :: proc(
               instr.offset,
               instr.ptr ? ' ' : ']',
             )
+
+            if instr.deref {
+              // fmt.println("deref")
+
+
+              fmt.sbprintf(
+                b,
+                "  mov %s, [%s]\n",
+                syscall_reg_list[-parent_ptr.offset - 2][0],
+                syscall_reg_list[-parent_ptr.offset - 2][0],
+              )
+              fmt.sbprintf(
+                b,
+                "  mov %s, %s\n",
+                syscall_reg_list[-parent_ptr.offset - 2][0],
+                syscall_reg_list[-parent_ptr.offset - 2][0],
+              )
+
+              // fmt.println(string(b.buf[:]))
+
+              // os.exit(1)
+            }
+
             parent_ptr.offset -= 1
           } else {
 
@@ -497,10 +519,12 @@ generate_instr :: proc(
         } else {
           fmt.sbprintf(
             b,
-            "  mov %s, [%s_%d]\n",
+            "  mov %s, %c%s_%d%c; hi\n",
             syscall_reg_list[R14][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
+            instr.ptr ? ' ' : '[',
             instr.name,
             instr.offset,
+            instr.ptr ? ' ' : ']',
           )
 
           fmt.sbprintf(
@@ -632,11 +656,6 @@ generate_instr :: proc(
         fmt.sbprintf(b, "  sete BYTE[cmp_0]\n")
       }
 
-
-    // fmt.println(string(b.buf[:]))
-    // fmt.println("not")
-    // os.exit(1)
-
     case:
       fmt.print("curent state: \n", string(b.buf[:]))
       fmt.println("-------------------------------------------")
@@ -650,148 +669,9 @@ generate_instr :: proc(
 
   }
 
-
-  // for &instr, i in instrs {
-  //   if len(instr.params) != 0 && instr.instr != .block do generate_instr(b, instr.params[:])
-
-  //   if len(instr.params) == 0 && instr.instr == .store do continue
-
-  //   #partial switch instr.instr {
-  //   case .block:
-  //     fmt.sbprintf(b, "  call block_%d\n", instr.offset)
-  //   case .call:
-  //     arg_num := get_arg_num_from_call(instr.params[:])
-
-  //     for i in 0 ..< arg_num {
-  //       fmt.sbprintf(b, "  pop %s\n", syscall_reg_list[arg_num - i - 1])
-  //     }
-  //     fmt.sbprintf(b, "  call %s\n", instr.name)
-
-  //   case .extrn:
-  //     if instr.optional == "" do instr.optional = instr.name
-  //     fmt.sbprintf(b, "  extrn '%s' as _%s\n", instr.optional, instr.name)
-  //     fmt.sbprintf(b, "  %s = PLT _%s\n", instr.name, instr.name)
-
-  //   // case .eq:
-  //   //   fmt.sbprintf(b, "  pop r12\n") // num2
-  //   //   fmt.sbprintf(b, "  pop r11\n") // num1
-  //   //   fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
-  //   //   fmt.sbprintf(b, "  je cmp_label_true_%d\n", counter)
-  //   //   fmt.sbprintf(b, "  mov QWORD[cmp_store], 1\n")
-  //   //   fmt.sbprintf(b, "  jmp cmp_label_false_%d\n", counter)
-  //   //   fmt.sbprintf(b, "cmp_label_true_%d:\n", counter)
-  //   //   fmt.sbprintf(b, "  mov QWORD[cmp_store], 0\n")
-  //   //   fmt.sbprintf(b, "cmp_label_false_%d:\n", counter)
-  //   //   counter += 1
-  //   case .noteq:
-  //     fmt.sbprintf(b, "  pop r12\n") // num2
-  //     fmt.sbprintf(b, "  pop r11\n") // num1
-  //     fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
-  //     fmt.sbprintf(b, "  setne BYTE[cmp_s]\n") // num1 < = > num2
-
-  //     // fmt.sbprintf(b, "  jne cmp_label_true_%d\n", counter)
-  //     // fmt.sbprintf(b, "  push 0\n")
-  //     // fmt.sbprintf(b, "  jmp cmp_label_false_%d\n", counter)
-  //     // fmt.sbprintf(b, "cmp_label_true_%d:\n", counter)
-  //     // fmt.sbprintf(b, "  push 1\n")
-  //     // fmt.sbprintf(b, "cmp_label_false_%d:\n", counter)
-  //     counter += 1
-  //   case .jmp:
-  //     fmt.sbprintf(b, "  jmp label_%d\n", instr.offset)
-  //   case .if_:
-  //     fmt.sbprintf(b, "  cmp BYTE[cmp_s], 0\n")
-  //     fmt.sbprintf(b, "  je label_%d\n", instr.offset)
-  //   case .label:
-  //     fmt.sbprintf(b, "label_%d:\n", instr.offset)
-  //   case .push:
-  //     fmt.sbprintf(b, "  push %d\n", instr.val)
-  //   case .add:
-  //     if instr.name == "" {
-  //       fmt.sbprintf(b, "  pop r15\n")
-  //       fmt.sbprintf(b, "  pop r14\n")
-  //       fmt.sbprintf(b, "  add r15, r14\n")
-  //       fmt.sbprintf(b, "  push r15\n")
-  //     } else {
-  //       fmt.sbprintf(b, "  pop r15\n")
-  //       fmt.sbprintf(b, "  pop r14\n")
-  //       fmt.sbprintf(b, "  add r15, r14\n")
-  //       fmt.sbprintf(b, "  push r15\n")
-  //     }
-  //   case .sub:
-  //     if instr.name == "" {
-  //       fmt.sbprintf(b, "  pop r15\n")
-  //       fmt.sbprintf(b, "  sub r15, %d\n", instr.val)
-  //       fmt.sbprintf(b, "  push r15\n")
-  //     } else {
-  //       fmt.sbprintf(b, "  pop r15\n")
-  //       fmt.sbprintf(b, "  pop r14\n")
-  //       fmt.sbprintf(b, "  sub r15, r14\n")
-  //       fmt.sbprintf(b, "  push r15\n")
-  //     }
-  //   case .mult:
-  //     fmt.sbprintf(b, "  mov r14, rax\n")
-
-  //     fmt.sbprintf(b, "  pop rax\n")
-  //     fmt.sbprintf(b, "  mov r15, %d\n", instr.val)
-  //     fmt.sbprintf(b, "  mul r15\n")
-  //     fmt.sbprintf(b, "  push rax\n")
-
-  //     fmt.sbprintf(b, "  mov rax, r14\n")
-
-  //   case .div:
-  //     fmt.sbprintf(b, "  mov r15, rax\n")
-  //     fmt.sbprintf(b, "  mov r14, rdx\n")
-
-  //     fmt.sbprintf(b, "  pop rax\n")
-  //     fmt.sbprintf(b, "  mov r13, %d\n", instr.val)
-
-  //     fmt.sbprintf(b, "  xor rdx, rdx\n")
-  //     fmt.sbprintf(b, "  div r13\n")
-
-  //     fmt.sbprintf(b, "  push rax\n")
-
-  //     fmt.sbprintf(b, "  mov rax, r15\n")
-  //     fmt.sbprintf(b, "  mov rdx, r14\n")
-  //   case .store:
-  //     fmt.sbprintf(b, "  pop QWORD[%s_%d]\n", instr.name, instr.offset)
-  //   case .assign:
-  //     if auto_cast instr.offset > instr.type_num - 1 {
-  //       fmt.eprintln(
-  //         "tried to access an array outside of its bounds please reconsider your life choices",
-  //       )
-  //       os.exit(1)
-  //     }
-  //     fmt.sbprintf(b, "  pop QWORD[%s_%d]\n", instr.name, instr.offset)
-  //   case .load:
-  //     brack := []byte{'[', ' '}
-  //     brack2 := []byte{']', ' '}
-  //     fmt.sbprintf(
-  //       b,
-  //       "  push QWORD%c%s_%d%c\n",
-  //       brack[cast(int)instr.ptr],
-  //       instr.name,
-  //       instr.offset,
-  //       brack2[cast(int)instr.ptr],
-  //     )
   //   case .deref:
   //     fmt.sbprintf(b, "  mov r13, QWORD [%s_%d]\n", instr.name, instr.offset)
   //     fmt.sbprintf(b, "  push QWORD[r13]\n")
-  //   case .syscall:
-  //     arg_num := get_arg_num_from_call(instr.params[:])
-
-  //     for i in 0 ..< arg_num {
-  //       fmt.sbprintf(b, "  pop %s\n", syscall_reg_list[arg_num - i - 1])
-  //     }
-  //     fmt.sbprintf(b, "  syscall\n")
-  //   case .nothing:
-  //   case:
-  //     fmt.print("curent state: \n", string(b.buf[:]))
-  //     fmt.println("-------------------------------------------")
-  //     fmt.eprintln("unimplemented", instr.instr)
-  //     cm.print_instrs(instrs)
-  //     os.exit(1)
-  //   }
-  // }
 
   // fmt.sbprintf(b, ";----------------------\n")
 

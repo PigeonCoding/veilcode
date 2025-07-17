@@ -40,7 +40,7 @@ print_instrs :: proc(instrs: []n_instrs, indent: u8 = 0) {
   for i in instrs {
     for u in 0 ..< indent do fmt.print("   ")
     fmt.printfln(
-      "instr: {}, name: '%s', type: {}, type_num: %d, offset: %d, val: %d, flt: %f, ptr: {}, optional: '%s'",
+      "instr: {}, name: '%s', type: {}, type_num: %d, offset: %d, val: %d, flt: %f, ptr: {}, deref: {} optional: '%s'",
       i.instr,
       i.name,
       i.type,
@@ -49,6 +49,7 @@ print_instrs :: proc(instrs: []n_instrs, indent: u8 = 0) {
       i.val,
       i.flt,
       i.ptr,
+      i.deref,
       i.optional,
     )
     if len(i.params) > 0 {

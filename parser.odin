@@ -348,8 +348,12 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
             lx.get_token(l)
             if l.token.type != .close_bracket do os.exit(1)
             lx.get_token(l)
-
           }
+        }
+
+        if l.token.type == .asterisk {
+          ins.deref = true
+          lx.get_token(l)
         }
 
         if l.token.type != .equals_sign {
@@ -366,12 +370,6 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
 
           lx.get_token(l)
         }
-        // append(instrs, ins)
-        // if !lx.check_type(l, .semicolon) do os.exit(1)
-        // lx.get_token(l)
-        // return
-        // fmt.println(l.token)
-
 
       } else if fn, p := fn_exists(l.token.str).?; p {
 
