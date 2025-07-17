@@ -219,7 +219,6 @@ generate_blocks :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
   }
 }
 
-// TODO: printf only supportd 32bit ints minimum
 generate :: proc(instrs: []cm.n_instrs) -> string {
   res: strings.Builder
 

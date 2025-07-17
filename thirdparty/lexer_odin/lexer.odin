@@ -321,7 +321,7 @@ init_lexer :: proc(file: string) -> lexer {
 
   str, _ := read_file(file)
   str, _ = strings.replace_all(str, "\r\n", "\n")
-  l.content, _ = string_to_u8(&str).? // TODO: maybe check this?
+  l.content, _ = string_to_u8(&str).?
   if len(l.content) == 0 {
     fmt.println("file", file, "either does not exist or is not readable")
     os.exit(1)
