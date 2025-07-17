@@ -483,25 +483,23 @@ generate_instr :: proc(
             )
 
             if instr.deref {
-              // fmt.println("deref")
 
+              if instr.optional == "char" {
+                fmt.sbprintf(b, "  xor r13, r13\n")
+                fmt.sbprintf(b, "  mov r13b, [%s]\n", syscall_reg_list[-parent_ptr.offset - 2][0])
+                fmt.sbprintf(b, "  mov %s, r13\n", syscall_reg_list[-parent_ptr.offset - 2][0])
 
-              fmt.sbprintf(
-                b,
-                "  mov %s, [%s]\n",
-                syscall_reg_list[-parent_ptr.offset - 2][0],
-                syscall_reg_list[-parent_ptr.offset - 2][0],
-              )
-              fmt.sbprintf(
-                b,
-                "  mov %s, %s\n",
-                syscall_reg_list[-parent_ptr.offset - 2][0],
-                syscall_reg_list[-parent_ptr.offset - 2][0],
-              )
-
-              // fmt.println(string(b.buf[:]))
-
-              // os.exit(1)
+              } else {
+                // TODO: maybe 16/32 bits later
+                fmt.sbprintf(
+                  b,
+                  "  mov %s, [%s]\n",
+                  syscall_reg_list[-parent_ptr.offset - 2][0],
+                  syscall_reg_list[-parent_ptr.offset - 2][0],
+                )
+                fmt.println(string(b.buf[:]))
+                // assert(false, "easier")
+              }
             }
 
             parent_ptr.offset -= 1

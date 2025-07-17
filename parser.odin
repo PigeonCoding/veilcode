@@ -351,9 +351,17 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
           }
         }
 
-        if l.token.type == .asterisk {
+        if l.token.type == .pipe {
           ins.deref = true
+
           lx.get_token(l)
+          if !lx.check_type(l, .id) do os.exit(1)
+          ins.optional = l.token.str
+
+          // fmt.println(ins)
+
+          lx.get_token(l)
+          // os.exit(1)
         }
 
         if l.token.type != .equals_sign {
