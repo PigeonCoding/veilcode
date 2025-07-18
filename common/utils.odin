@@ -13,7 +13,9 @@ builder_append_string :: proc(b: ^strings.Builder, str: string) {
 str_check :: proc(s: ^string) {
   switch s^ {
   case "test":
-    s^ = "test____this_should_be_fixed_maybe"
+    fmt.eprintln("cannot name something test")
+    os.exit(1)
+    // s^ = "test____this_should_be_fixed_maybe"
   }
 }
 

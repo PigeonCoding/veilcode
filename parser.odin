@@ -33,7 +33,7 @@ parse :: proc(files: []string) -> []cm.n_instrs {
 
     for l.token.type != .null_char && l.token.type != .either_end_or_failure {
       if l.token.type == .open_brace {
-        fmt.println("entered")
+        // fmt.println("entered")
         ins: cm.n_instrs
         ins.instr = .block
         ins.offset = auto_cast label_counter
@@ -47,7 +47,7 @@ parse :: proc(files: []string) -> []cm.n_instrs {
 
         append(&instrs_og, ins)
         lx.get_token(&l)
-        fmt.println("ended")
+        // fmt.println("ended")
       } else {
         parse_shit(&l, &instrs_og)
       }
@@ -59,6 +59,8 @@ parse :: proc(files: []string) -> []cm.n_instrs {
 }
 
 var_exists :: proc(name: string) -> Maybe(cm.n_instrs) {
+  if name == "args" do return cm.n_instrs{name = "args__", type = .n_int, instr = .reg, type_num = 10}
+
   for i in instrs_og {
     if (i.instr == .store || i.instr == .create) && i.name == name do return i
   }
@@ -67,18 +69,26 @@ var_exists :: proc(name: string) -> Maybe(cm.n_instrs) {
 }
 
 fn_exists :: proc(name: string) -> Maybe(cm.n_instrs) {
+  n := name
+  cm.str_check(&n)
   for i in instrs_og {
-    if i.instr == .extrn && i.name == name do return i
+    if (i.instr == .extrn || i.instr == .fn) && i.name == n do return i
   }
-  // TODO: check for fns once implemented
   return nil
 }
 
 parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
   ins: cm.n_instrs
   cm.str_check(&l.token.str)
+              // fmt.println(l.token)
+
 
   #partial switch auto_cast l.token.type {
+
+  case .close_brace:
+    lx.get_token(l)
+    return
+  
   case .intlit:
     ins.instr = .push
     ins.val = auto_cast l.token.intlit
@@ -161,6 +171,10 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
     lx.get_token(l)
     parse_shit(l, &ins.params)
 
+  case .semicolon:
+    lx.get_token(l)
+    return
+
   case .notq:
     ins.instr = .noteq
     lx.get_token(l)
@@ -219,6 +233,10 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
           ins.type_num = auto_cast len(i.optional)
         }
       }
+
+      // fmt.println(l.token)
+
+      // os.exit(1)
 
       lx.get_token(l)
 
@@ -359,11 +377,31 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
       lx.get_token(l)
       return
 
+    case "fn":
+      lx.get_token(l)
+      if !lx.check_type(l, .id) do os.exit(1)
+
+      cm.str_check(&l.token.str)
+
+      ins.name = l.token.str
+
+      lx.get_token(l)
+      if !lx.check_type(l, .intlit) do os.exit(1)
+
+      ins.type_num = auto_cast l.token.intlit
+      ins.instr = .fn
+
+      lx.get_token(l)
+      lx.get_token(l)
+
+      parse_shit(l, &ins.params)
+
 
     case:
       if var, f := var_exists(l.token.str).?; f {
-        ins.name = var.name
+        ins.name = strings.concatenate({var.name, "_"})
         ins.instr = .assign
+        // if var.instr == .reg do ins.instr = .reg
         ins.type = var.type
         ins.type_num = var.type_num
 
@@ -392,7 +430,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
           // os.exit(1)
         }
 
-        if l.token.type != .equals_sign {
+        if l.token.type != .equals_sign && ins.instr != .reg {
           ins.instr = .load
         } else {
           lx.get_token(l)
@@ -411,6 +449,8 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
 
         ins.instr = .call
         ins.name = fn.name
+        ins.type_num = fn.type_num
+
         lx.get_token(l)
         if !lx.check_type(l, .open_parenthesis) do os.exit(1)
         lx.get_token(l)
@@ -422,19 +462,27 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
           // fmt.println(l.token)
         }
 
-        if !lx.check_type(l, .close_parenthesis) do os.exit(1)
-        lx.get_token(l)
-        if !lx.check_type(l, .semicolon) do os.exit(1)
-        lx.get_token(l)
+        if len(ins.params) > auto_cast ins.type_num && fn.instr != .extrn {
+          fmt.eprintln("too many args for the function", ins.name)
+        }
+
+        if l.token.type != .either_end_or_failure {
+          if !lx.check_type(l, .close_parenthesis) do os.exit(1)
+          lx.get_token(l)
+          if !lx.check_type(l, .semicolon) do os.exit(1)
+        }
+
+        // lx.get_token(l)
 
 
       } else {
-        // fmt.println(instrs)
+        fmt.println("------------------------")
+        cm.print_instrs(instrs[:])
+        fmt.println("------------------------")
         fmt.eprintfln("%s:%d:%d unknown id '%s'", l.file, l.row + 1, l.col, l.token.str)
         os.exit(1)
 
       }
-
 
     }
 

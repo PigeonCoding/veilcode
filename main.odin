@@ -112,6 +112,11 @@ main :: proc() {
   }
 
   instrs := parse(files_to_parse[:])
+  {
+    ind := 0
+    postprocess(instrs)
+  }
+
 
   if fg.get_flag_value(&fl_cont, "ir") != nil {
     cm.print_instrs(instrs)

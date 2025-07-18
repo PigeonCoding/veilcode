@@ -1,2 +1,4 @@
 extrn printf
 extrn exit
+extrn fopen
+extrn fclose

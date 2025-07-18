@@ -177,6 +177,10 @@ generate_vars :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
       }
       // cm.builder_append_string(b, "\n")
 
+    } else if instr.instr == .fn {
+      for i in 0 ..< instr.type_num {
+        fmt.sbprintf(b, "args_%s_%d: dq 0\n", instr.name, i)
+      }
     }
   }
 }
@@ -216,7 +220,19 @@ generate_blocks :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
 
       fmt.sbprintf(b, "  ret\n")
     }
+
+    if instr.instr == .fn {
+      fmt.sbprintf(b, "%s:\n", instr.name)
+
+      generate_instr(b, instr.params[:])
+
+      fmt.sbprintf(b, "  ret\n")
+    }
+
+
+    if len(instr.params) > 0 do generate_blocks(b, instr.params[:])
   }
+
 }
 
 generate :: proc(instrs: []cm.n_instrs) -> string {
@@ -603,16 +619,35 @@ generate_instr :: proc(
     case .jmp:
       fmt.sbprintf(b, "  jmp label_%d\n", instr.offset)
 
+    case .fn:
+
+
     case .block:
-      fmt.sbprintf(b, "  call block_%d\n", instr.offset)
+      fmt.sbprintf(b, "  call block_%d\n ;----", instr.offset)
 
     case .call:
       arg_num := get_arg_num_from_call(instr.params[:])
       call_name := instr.name
-      instr.name = "reg"
+      // instr.name = "reg"
       instr.offset = -2
       generate_instr(b, instr.params[:], &instr)
+      if instr.type_num != 0 {
+        for i in 0 ..< instr.type_num {
+          fmt.sbprintf(b, "  mov QWORD[args_%s_%d], %s\n", instr.name, i, syscall_reg_list[i][0])
+        }
+
+      }
       fmt.sbprintf(b, "  call %s\n", call_name)
+      if pptr {
+        fmt.sbprintf(
+          b,
+          "  mov %s[%s_%d] ,%s\n",
+          conv_list[auto_cast parent_ptr.type],
+          parent_ptr.name,
+          parent_ptr.offset,
+          syscall_reg_list[RAX][sys_reg_offset[auto_cast parent_ptr.type]],
+        )
+      }
 
     case .nothing:
 
@@ -702,16 +737,5 @@ generate_instr :: proc(
       os.exit(1)
 
     }
-
-    // os.exit(1)
-
   }
-
-  //   case .deref:
-  //     fmt.sbprintf(b, "  mov r13, QWORD [%s_%d]\n", instr.name, instr.offset)
-  //     fmt.sbprintf(b, "  push QWORD[r13]\n")
-
-  // fmt.sbprintf(b, ";----------------------\n")
-
-
 }

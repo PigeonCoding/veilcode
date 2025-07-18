@@ -1,0 +1,9 @@
+$include "../std/libc"
+
+// TODO: have to fix multiple args
+fn testing 2 {
+  printf(0, args[0], args[1]);
+}
+
+testing("hiiiiii %d\n", 69);
+

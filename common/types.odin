@@ -21,6 +21,8 @@ n_instrs_enum :: enum {
   noteq,
   block,
   extrn,
+  fn,
+  reg,
 }
 
 n_types :: enum {
