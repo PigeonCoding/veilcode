@@ -10,50 +10,49 @@ prt_asm := false
 @(private)
 counter: uint = 0
 @(private)
-RAX :: 0
+RDI :: 0
 @(private)
-RDI :: 1
+RSI :: 1
 @(private)
-RSI :: 2
+RDX :: 2
 @(private)
-RDX :: 3
+RCX :: 3
 @(private)
-R10 :: 4
+R8 :: 4
 @(private)
-R8 :: 5
+R9 :: 5
 @(private)
-R9 :: 6
+R10 :: 6
 @(private)
 RBX :: 7
 @(private)
-RCX :: 8
+R15 :: 8
 @(private)
-R15 :: 9
+R14 :: 9
 @(private)
-R14 :: 10
+R13 :: 10
 @(private)
-R13 :: 11
+R12 :: 11
 @(private)
-R12 :: 12
+R11 :: 12
 @(private)
-R11 :: 13
-@(private)
+RAX :: 13
 syscall_reg_list := [?]([]string) {
-  []string{"rax", "eax", "ax", "al"},
   []string{"rdi", "edi", "di", "dil"},
   []string{"rsi", "esi", "si", "sil"},
   []string{"rdx", "edx", "dx", "dl"},
-  []string{"r10", "r10D", "r10W", "r10B"},
+  []string{"rcx", "ecx", "cx", "cl"},
   []string{"r8", "r8D", "r8W", "r8B"},
   []string{"r9", "r9D", "r9W", "r9B"},
   // ------------------------
+  []string{"r10", "r10D", "r10W", "r10B"},
   []string{"rbx", "ebx", "bx", "bl"},
-  []string{"rcx", "ecx", "cx", "cl"},
   []string{"r15", "r15D", "r15W", "r15B"},
   []string{"r14", "r14D", "r14W", "r14B"},
   []string{"r13", "r13D", "r13W", "r13B"},
   []string{"r12", "r12D", "r12W", "r12B"},
   []string{"r11", "r11D", "r11W", "r11B"},
+  []string{"rax", "eax", "ax", "al"},
 }
 @(private)
 sys_reg_offset := [?]int{-1, 0, 0, 3, 3}
@@ -553,8 +552,6 @@ generate_instr :: proc(
                   syscall_reg_list[-parent_ptr.offset - 2][0],
                   syscall_reg_list[-parent_ptr.offset - 2][0],
                 )
-                fmt.println(string(b.buf[:]))
-                // assert(false, "easier")
               }
             }
 
@@ -623,7 +620,8 @@ generate_instr :: proc(
 
 
     case .block:
-      fmt.sbprintf(b, "  call block_%d\n ;----", instr.offset)
+      fmt.sbprintf(b, "  xor rax, rax\n")
+      fmt.sbprintf(b, "  call block_%d\n", instr.offset)
 
     case .call:
       arg_num := get_arg_num_from_call(instr.params[:])
@@ -631,12 +629,14 @@ generate_instr :: proc(
       // instr.name = "reg"
       instr.offset = -2
       generate_instr(b, instr.params[:], &instr)
+      
       if instr.type_num != 0 {
         for i in 0 ..< instr.type_num {
           fmt.sbprintf(b, "  mov QWORD[args_%s_%d], %s\n", instr.name, i, syscall_reg_list[i][0])
         }
 
       }
+      fmt.sbprintf(b, "  xor rax, rax\n")
       fmt.sbprintf(b, "  call %s\n", call_name)
       if pptr {
         fmt.sbprintf(

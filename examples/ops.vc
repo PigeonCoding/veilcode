@@ -1,7 +1,7 @@
 $include "../std/libc"
 
 let a: int  = 034  +   35;
-let b: int  = 010  -   05;
+let b: int  = 05   -   10;
 let c: int  = 006  *   10;
 let d: int  = 100  /   04;
 let e: int  = 10   %   07;
@@ -10,12 +10,12 @@ let g: char = 002  !=  02;
 let h: char = 002  ==  01;
 let i: char = 002  !=  01;
 
-printf(0, "%d\n", a);
-printf(0, "%d\n", b);
-printf(0, "%d\n", c);
-printf(0, "%d\n", d);
-printf(0, "%d\n", e);
-printf(0, "%d\n", f);
-printf(0, "%d\n", g);
-printf(0, "%d\n", h);
-printf(0, "%d\n", i);
+printf("034  +   35 = %d\n", a);
+printf("05   -   10 = %d\n", b);
+printf("006  *   10 = %d\n", c);
+printf("100  /   04 = %d\n", d);
+printf("10   %%   07 = %d\n", e);
+printf("002  ==  02 = %d\n", f);
+printf("002  !=  02 = %d\n", g);
+printf("002  ==  01 = %d\n", h);
+printf("002  !=  01 = %d\n", i);

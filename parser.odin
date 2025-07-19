@@ -80,7 +80,7 @@ fn_exists :: proc(name: string) -> Maybe(cm.n_instrs) {
 parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
   ins: cm.n_instrs
   cm.str_check(&l.token.str)
-              // fmt.println(l.token)
+  // fmt.println(l.token)
 
 
   #partial switch auto_cast l.token.type {
@@ -88,7 +88,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
   case .close_brace:
     lx.get_token(l)
     return
-  
+
   case .intlit:
     ins.instr = .push
     ins.val = auto_cast l.token.intlit
@@ -399,7 +399,8 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
 
     case:
       if var, f := var_exists(l.token.str).?; f {
-        ins.name = strings.concatenate({var.name, "_"})
+        ins.name = var.name
+        // fmt.println("-----", ins.name)
         ins.instr = .assign
         // if var.instr == .reg do ins.instr = .reg
         ins.type = var.type
@@ -450,6 +451,8 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         ins.instr = .call
         ins.name = fn.name
         ins.type_num = fn.type_num
+
+        if fn.instr == .extrn do ins.optional = "extrn"
 
         lx.get_token(l)
         if !lx.check_type(l, .open_parenthesis) do os.exit(1)
