@@ -1,11 +1,13 @@
 $include "../std/libc"
 
-let tester: char = 69;
+fn testing 2
 
 // TODO: have to fix multiple args
-fn testing 7 {
-  printf(args[0], args[1], args[2], args[3], args[4], args[5], args[6], 0);
+fn testing 2 {
+  printf(args[0], args[1]);
+  args[1] = args[1] - 1;
+  if (args[1] > 1) { testing(args[0], args[1]); }
 }
 
-testing("hiiiiii %d, %d, %d, %d, %d, %d\n", 1, 2, 3, 4, 5, tester);
+testing("hiiiiii %d\n", 10);
 

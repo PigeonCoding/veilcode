@@ -1,0 +1,16 @@
+$include "../std/libc"
+
+let t: int = 0;
+
+if (t < 1) {
+  printf("Hello, ");
+} else {
+  printf("World, ");
+}
+
+if (t > -1) {
+  printf("World\n");
+} else {
+  printf("Hello\n");
+}
+

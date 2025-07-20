@@ -122,8 +122,16 @@ generate_vars :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
   cm.builder_append_string(b, "section '.data' writable\n")
 
 
-  fmt.sbprintf(b, "cmp_0 : dq 0\n")
-  fmt.sbprintf(b, "tmp_0 : dq 0\n\n")
+  fmt.sbprintf(b, "cmp_0   : dq 0\n")
+  fmt.sbprintf(b, "tmp_0   : dq 0\n")
+  fmt.sbprintf(b, "trash_0 : dq 0\n\n")
+
+  for i in 0 ..< 20 {
+    fmt.sbprintf(b, "fn_args_%d : dq 0\n", i)
+  }
+  fmt.sbprintf(b, "\n")
+
+
   for &instr in instrs {
     if instr.instr == .store {
       instr.instr = .assign
@@ -176,11 +184,12 @@ generate_vars :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
       }
       // cm.builder_append_string(b, "\n")
 
-    } else if instr.instr == .fn {
-      for i in 0 ..< instr.type_num {
-        fmt.sbprintf(b, "args_%s_%d: dq 0\n", instr.name, i)
-      }
     }
+    //  else if instr.instr == .fn {
+    //   for i in 0 ..< instr.type_num {
+    //     fmt.sbprintf(b, "args_%s_%d: dq 0\n", instr.name, i)
+    //   }
+    // }
   }
 }
 
@@ -607,7 +616,7 @@ generate_instr :: proc(
       fmt.sbprintf(b, "  mov QWORD[cmp_0], 0\n")
       generate_instr(b, instr.params[:], &instr)
       fmt.sbprintf(b, "  cmp BYTE[cmp_0], 1\n")
-      fmt.sbprintf(b, "  jne label_%d\n", old_off)
+      fmt.sbprintf(b, "  je label_%d\n", old_off)
 
 
     case .label:
@@ -618,7 +627,6 @@ generate_instr :: proc(
 
     case .fn:
 
-
     case .block:
       fmt.sbprintf(b, "  xor rax, rax\n")
       fmt.sbprintf(b, "  call block_%d\n", instr.offset)
@@ -626,18 +634,68 @@ generate_instr :: proc(
     case .call:
       arg_num := get_arg_num_from_call(instr.params[:])
       call_name := instr.name
-      // instr.name = "reg"
-      instr.offset = -2
-      generate_instr(b, instr.params[:], &instr)
-      
-      if instr.type_num != 0 {
-        for i in 0 ..< instr.type_num {
-          fmt.sbprintf(b, "  mov QWORD[args_%s_%d], %s\n", instr.name, i, syscall_reg_list[i][0])
+
+      for i in 0 ..< len(instr.params) {
+        fmt.sbprintf(b, "  push QWORD[fn_args_%d]\n", i)
+      }
+
+      if len(instr.params) > 5 && instr.optional == "extrn" {
+
+        i := 0
+        for ins in instr.params {
+          if i <= 5 {
+            if ins.instr == .load {
+              fmt.sbprintf(b, "  mov %s, QWORD[%s_%d]\n", syscall_reg_list[i][0], ins.name, i)
+            } else if ins.instr == .push {
+              fmt.sbprintf(b, "  mov %s, %d\n", syscall_reg_list[i][0], ins.val)
+            }
+          } else {
+            break
+          }
+          i += 1
+        }
+        // 1 2 3 4 5 | 6 7
+        //     | 
+        ii := len(instr.params) - 1
+        fmt.println(i, ii)
+        for ii >= i {
+          ins := instr.params[ii]
+          if ins.instr == .load {
+            fmt.sbprintf(b, "  push QWORD[%s_%d]\n", ins.name, ii)
+          } else if ins.instr == .push {
+            fmt.sbprintf(b, "  push %d\n", ins.val)
+          }
+          ii -= 1
         }
 
+        // fmt.println(string(b.buf[:]))
+
+        // os.exit(1)
+      } else {
+        // instr.name = "reg"
+        instr.offset = -2
+        generate_instr(b, instr.params[:], &instr)
+
+        if instr.type_num != 0 {
+          for i in 0 ..< instr.type_num {
+            fmt.sbprintf(b, "  mov QWORD[fn_args_%d], %s\n", i, syscall_reg_list[i][0])
+          }
+        }
       }
+
+
       fmt.sbprintf(b, "  xor rax, rax\n")
       fmt.sbprintf(b, "  call %s\n", call_name)
+
+      if instr.optional == "extrn" && len(instr.params) > 5 {
+        for i in 5 ..< len(instr.params) - 1 do fmt.sbprintf(b, "  pop QWORD[trash_0]\n")
+      }
+
+      for i in 0 ..< len(instr.params) {
+        fmt.sbprintf(b, "  pop QWORD[fn_args_%d]\n", len(instr.params) - i - 1)
+      }
+
+
       if pptr {
         fmt.sbprintf(
           b,
@@ -649,9 +707,11 @@ generate_instr :: proc(
         )
       }
 
-    case .nothing:
+    case .nothing, .fn_declare:
+    case .return_:
+      fmt.sbprintf(b, "  ret\n")
 
-    case .noteq:
+    case .less:
       if pptr {
         if parent_ptr.offset < 0 {
           if parent_ptr.offset < -1 {
@@ -661,8 +721,8 @@ generate_instr :: proc(
 
             generate_instr(b, instr.params[:], &instr)
 
-            fmt.sbprintf(b, "  cmp r12, r13\n") // num1 < = > num2
-            fmt.sbprintf(b, "  setne BYTE[cmp_0]\n")
+            fmt.sbprintf(b, "  cmp r12, r11\n") // num1 < = > num2
+            fmt.sbprintf(b, "  setl BYTE[cmp_0]\n")
           }
         } else {
 
@@ -680,17 +740,17 @@ generate_instr :: proc(
             parent_ptr.offset,
             syscall_reg_list[R13][sys_reg_offset[auto_cast parent_ptr.type]],
           ) // num1 < = > num2
-          fmt.sbprintf(b, "  setne BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
+          fmt.sbprintf(b, "  setl BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
         }
       } else {
         generate_instr(b, instr.params[:])
         fmt.sbprintf(b, "  pop r12\n") // num2
         fmt.sbprintf(b, "  pop r11\n") // num1
         fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
-        fmt.sbprintf(b, "  setne BYTE[cmp_0]\n")
+        fmt.sbprintf(b, "  setl BYTE[cmp_0]\n")
       }
 
-    case .eq:
+    case .greater:
       if pptr {
         if parent_ptr.offset < 0 {
           if parent_ptr.offset < -1 {
@@ -700,11 +760,50 @@ generate_instr :: proc(
 
             generate_instr(b, instr.params[:], &instr)
 
-            fmt.sbprintf(b, "  cmp r12, r13\n") // num1 < = > num2
-            fmt.sbprintf(b, "  mov QWORD[cmp_0], 0\n")
+            fmt.sbprintf(b, "  cmp r12, r11\n") // num1 < = > num2
+            fmt.sbprintf(b, "  setg BYTE[cmp_0]\n")
+          }
+        } else {
+
+          instr.name = ""
+          instr.type = parent_ptr.type
+          instr.offset = -13
+
+          generate_instr(b, instr.params[:], &instr)
+
+          fmt.sbprintf(
+            b,
+            "  cmp %s[%s_%d], %s\n",
+            conv_list[auto_cast parent_ptr.type],
+            parent_ptr.name,
+            parent_ptr.offset,
+            syscall_reg_list[R13][sys_reg_offset[auto_cast parent_ptr.type]],
+          ) // num1 < = > num2
+          fmt.sbprintf(b, "  setg BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
+        }
+      } else {
+        generate_instr(b, instr.params[:])
+        fmt.sbprintf(b, "  pop r12\n") // num2
+        fmt.sbprintf(b, "  pop r11\n") // num1
+        fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
+        fmt.sbprintf(b, "  setg BYTE[cmp_0]\n")
+      }
+
+    case .noteq:
+      if pptr {
+        if parent_ptr.offset < 0 {
+          if parent_ptr.offset < -1 {
+            instr.name = ""
+            instr.type = parent_ptr.type
+            instr.offset = -13
+
+            generate_instr(b, instr.params[:], &instr)
+
+            fmt.sbprintf(b, "  cmp r12, r11\n") // num1 < = > num2
             fmt.sbprintf(b, "  sete BYTE[cmp_0]\n")
           }
         } else {
+
           instr.name = ""
           instr.type = parent_ptr.type
           instr.offset = -13
@@ -727,6 +826,45 @@ generate_instr :: proc(
         fmt.sbprintf(b, "  pop r11\n") // num1
         fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
         fmt.sbprintf(b, "  sete BYTE[cmp_0]\n")
+      }
+
+    case .eq:
+      if pptr {
+        if parent_ptr.offset < 0 {
+          if parent_ptr.offset < -1 {
+            instr.name = ""
+            instr.type = parent_ptr.type
+            instr.offset = -13
+
+            generate_instr(b, instr.params[:], &instr)
+
+            fmt.sbprintf(b, "  cmp r12, r11\n") // num1 < = > num2
+            fmt.sbprintf(b, "  mov QWORD[cmp_0], 0\n")
+            fmt.sbprintf(b, "  setne BYTE[cmp_0]\n")
+          }
+        } else {
+          instr.name = ""
+          instr.type = parent_ptr.type
+          instr.offset = -13
+
+          generate_instr(b, instr.params[:], &instr)
+
+          fmt.sbprintf(
+            b,
+            "  cmp %s[%s_%d], %s\n",
+            conv_list[auto_cast parent_ptr.type],
+            parent_ptr.name,
+            parent_ptr.offset,
+            syscall_reg_list[R13][sys_reg_offset[auto_cast parent_ptr.type]],
+          ) // num1 < = > num2
+          fmt.sbprintf(b, "  setne BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
+        }
+      } else {
+        generate_instr(b, instr.params[:])
+        fmt.sbprintf(b, "  pop r12\n") // num2
+        fmt.sbprintf(b, "  pop r11\n") // num1
+        fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
+        fmt.sbprintf(b, "  setne BYTE[cmp_0]\n")
       }
 
     case:

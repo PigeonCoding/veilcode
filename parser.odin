@@ -72,7 +72,7 @@ fn_exists :: proc(name: string) -> Maybe(cm.n_instrs) {
   n := name
   cm.str_check(&n)
   for i in instrs_og {
-    if (i.instr == .extrn || i.instr == .fn) && i.name == n do return i
+    if (i.instr == .extrn || i.instr == .fn || i.instr == .fn_declare) && i.name == n do return i
   }
   return nil
 }
@@ -109,6 +109,29 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
     }
 
     parse_shit(l, &ins.params)
+
+  case .less_than_sign:
+    ins.instr = .less
+
+    lx.get_token(l)
+    if !l.token.charlit && l.token.type != .intlit && l.token.type != .id {
+      fmt.eprintln("didn't expect this token", l.token)
+      os.exit(1)
+    }
+
+    parse_shit(l, &ins.params)
+
+  case .greater_than_sign:
+    ins.instr = .greater
+
+    lx.get_token(l)
+    if !l.token.charlit && l.token.type != .intlit && l.token.type != .id {
+      fmt.eprintln("didn't expect this token", l.token)
+      os.exit(1)
+    }
+
+    parse_shit(l, &ins.params)
+
 
   case .asterisk:
     ins.instr = .mult
@@ -392,10 +415,28 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
       ins.instr = .fn
 
       lx.get_token(l)
+
+      if l.token.type == .open_brace {
+        lx.get_token(l)
+
+        for l.token.type != .close_brace &&
+            l.token.type != .null_char &&
+            l.token.type != .either_end_or_failure {
+          parse_shit(l, &ins.params)
+
+
+        }
+      } else {
+        ins.instr = .fn_declare
+      }
+
+      append(instrs, ins)
+      return
+
+    case "return":
+      ins.instr = .return_
       lx.get_token(l)
-
-      parse_shit(l, &ins.params)
-
+    // TODO: add return argument later
 
     case:
       if var, f := var_exists(l.token.str).?; f {
@@ -480,7 +521,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
 
       } else {
         fmt.println("------------------------")
-        cm.print_instrs(instrs[:])
+        cm.print_instrs(instrs_og[:])
         fmt.println("------------------------")
         fmt.eprintfln("%s:%d:%d unknown id '%s'", l.file, l.row + 1, l.col, l.token.str)
         os.exit(1)

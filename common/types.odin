@@ -19,9 +19,15 @@ n_instrs_enum :: enum {
   label,
   eq,
   noteq,
+  less,
+  // lesseq,
+  greater,
+  // greatereq,
   block,
   extrn,
   fn,
+  fn_declare,
+  return_,
   reg,
 }
 

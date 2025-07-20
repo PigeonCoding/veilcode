@@ -7,8 +7,8 @@ let d: int  = 100  /   04;
 let e: int  = 10   %   07;
 let f: char = 002  ==  02;
 let g: char = 002  !=  02;
-let h: char = 002  ==  01;
-let i: char = 002  !=  01;
+let h: char = 002  <   01;
+let i: char = 002  >   01;
 
 printf("034  +   35 = %d\n", a);
 printf("05   -   10 = %d\n", b);
@@ -17,5 +17,5 @@ printf("100  /   04 = %d\n", d);
 printf("10   %%   07 = %d\n", e);
 printf("002  ==  02 = %d\n", f);
 printf("002  !=  02 = %d\n", g);
-printf("002  ==  01 = %d\n", h);
-printf("002  !=  01 = %d\n", i);
+printf("002  <   01 = %d\n", h);
+printf("002  >   01 = %d\n", i);

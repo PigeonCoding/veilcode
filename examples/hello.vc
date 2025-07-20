@@ -1,0 +1,3 @@
+$include "../std/libc"
+
+printf("Hello World\n");
