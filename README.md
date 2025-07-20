@@ -12,6 +12,6 @@ $ odin run out
 ## how to use
 see examples
 ```
-$ ./out/veilcode -out out/hello examples/hello_arr.nn
+$ ./out/veilcode -out out/hello examples/hello.vc
 $ ./out/hello
 ```
