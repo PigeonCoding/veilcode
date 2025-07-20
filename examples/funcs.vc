@@ -6,7 +6,10 @@ fn testing 2
 fn testing 2 {
   printf(args[0], args[1]);
   args[1] = args[1] - 1;
-  if (args[1] > 1) { testing(args[0], args[1]); }
+  if (args[1] < 0) { return }
+  else {
+    testing(args[0], args[1]);
+  }
 }
 
 testing("hiiiiii %d\n", 10);
