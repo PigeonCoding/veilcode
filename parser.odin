@@ -80,8 +80,6 @@ fn_exists :: proc(name: string) -> Maybe(cm.n_instrs) {
 parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
   ins: cm.n_instrs
   cm.str_check(&l.token.str)
-  // fmt.println(l.token)
-
 
   #partial switch auto_cast l.token.type {
 
@@ -178,12 +176,24 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
   // case .close_parenthesis, .close_brace:
   //   return
 
+  case .open_brace:
+    lx.get_token(l)
+    for l.token.type != .close_brace &&
+        l.token.type != .null_char &&
+        l.token.type != .either_end_or_failure {
+      parse_shit(l, instrs)
+    }
+    if !lx.check_type(l, .close_brace) do os.exit(1)
+    lx.get_token(l)
+    return
+
   case .open_parenthesis:
     lx.get_token(l)
     for l.token.type != .close_parenthesis &&
         l.token.type != .null_char &&
         l.token.type != .either_end_or_failure {
       parse_shit(l, instrs)
+      if l.token.type == .comma_char do lx.get_token(l)
     }
     if !lx.check_type(l, .close_parenthesis) do os.exit(1)
     lx.get_token(l)
@@ -244,7 +254,6 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         for l.token.type != .semicolon &&
             l.token.type != .null_char &&
             l.token.type != .either_end_or_failure {
-          // parse_shit(l, instrs)
           parse_shit(l, &ins.params)
         }
       } else {
@@ -276,24 +285,57 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
       lx.get_token(l)
 
 
-    case "if":
-      ins.instr = .if_
+    case "while":
+      ins4: cm.n_instrs
+      ins4.instr = .label
+      ins4.offset = auto_cast label_counter
+      label_counter = 1
+      append(instrs, ins4)
+
+
+      ins.instr = .while
       ins.offset = auto_cast label_counter
-      if_jmp := label_counter
-      // append(&label_stack, label_counter)
       label_counter += 1
 
       lx.get_token(l)
       if !lx.check_type(l, .open_parenthesis) do os.exit(1)
-      lx.get_token(l)
+      parse_shit(l, &ins.params)
 
-      for l.token.type != .close_parenthesis &&
-          l.token.type != .null_char &&
-          l.token.type != .either_end_or_failure {   // l.token.type != .open_brace &&
+      append(instrs, ins)
 
-        parse_shit(l, &ins.params)
-      }
+      if !lx.check_type(l, .open_brace) do os.exit(1)
+      ins2: cm.n_instrs
+      ins2.instr = .block
+      ins2.offset = auto_cast label_counter
+      label_counter += 1
+
+      parse_shit(l, &ins2.params)
+
+      append(instrs, ins2)
+
+
+      ins3: cm.n_instrs
+      ins3.instr = .jmp
+      ins3.offset = ins4.offset
+      append(instrs, ins3)
+
+      ins4.instr = .label
+      ins4.offset = ins.offset
+      append(instrs, ins4)
+
+      return
+
+
+    case "if":
+      ins.instr = .if_
+      ins.offset = auto_cast label_counter
+      if_jmp := label_counter
+      label_counter += 1
+
       lx.get_token(l)
+      if !lx.check_type(l, .open_parenthesis) do os.exit(1)
+
+      parse_shit(l, &ins.params)
 
       append(instrs, ins)
 
@@ -303,30 +345,23 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
       ins2.instr = .block
       ins2.offset = auto_cast label_counter
       label_counter += 1
-      lx.get_token(l)
-      // fmt.println("-------------------", l.token)
-      for l.token.type != .close_brace &&
-          l.token.type != .null_char &&
-          l.token.type != .either_end_or_failure {
-        parse_shit(l, &ins2.params)
-      }
+
+      parse_shit(l, &ins2.params)
+
       append(instrs, ins2)
 
-      if !lx.check_type(l, .close_brace) do os.exit(1)
 
-      lx.get_token(l)
+      // lx.get_token(l)
       if l.token.str == "else" {
 
         lx.get_token(l)
         if !lx.check_type(l, .open_brace) do os.exit(1)
 
-        // tmp := pop(&label_stack)
 
         ins3: cm.n_instrs
         ins3.instr = .jmp
         ins3.offset = auto_cast label_counter
         else_jmp := label_counter
-        // append(&label_stack, auto_cast ins3.offset)
         label_counter += 1
 
         append(instrs, ins3)
@@ -343,18 +378,8 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         ins3.offset = auto_cast label_counter
         label_counter += 1
 
-        // lx.get_token(l)
         if !lx.check_type(l, .open_brace) do os.exit(1)
-
-        lx.get_token(l)
-        for l.token.type != .close_brace &&
-            l.token.type != .null_char &&
-            l.token.type != .either_end_or_failure {
-          parse_shit(l, &ins3.params)
-        }
-
-        if !lx.check_type(l, .close_brace) do os.exit(1)
-        lx.get_token(l)
+        parse_shit(l, &ins3.params)
 
         append(instrs, ins3)
 
@@ -417,15 +442,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
       lx.get_token(l)
 
       if l.token.type == .open_brace {
-        lx.get_token(l)
-
-        for l.token.type != .close_brace &&
-            l.token.type != .null_char &&
-            l.token.type != .either_end_or_failure {
-          parse_shit(l, &ins.params)
-
-
-        }
+        parse_shit(l, &ins.params)
       } else {
         ins.instr = .fn_declare
       }
@@ -441,9 +458,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
     case:
       if var, f := var_exists(l.token.str).?; f {
         ins.name = var.name
-        // fmt.println("-----", ins.name)
         ins.instr = .assign
-        // if var.instr == .reg do ins.instr = .reg
         ins.type = var.type
         ins.type_num = var.type_num
 
@@ -466,10 +481,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
           if !lx.check_type(l, .id) do os.exit(1)
           ins.optional = l.token.str
 
-          // fmt.println(ins)
-
           lx.get_token(l)
-          // os.exit(1)
         }
 
         if l.token.type != .equals_sign && ins.instr != .reg {
@@ -480,7 +492,6 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
           for l.token.type != .semicolon &&
               l.token.type != .null_char &&
               l.token.type != .either_end_or_failure {
-            // parse_shit(l, instrs)
             parse_shit(l, &ins.params)
           }
 
@@ -497,26 +508,11 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
 
         lx.get_token(l)
         if !lx.check_type(l, .open_parenthesis) do os.exit(1)
-        lx.get_token(l)
-        for l.token.type != .close_parenthesis &&
-            l.token.type != .null_char &&
-            l.token.type != .either_end_or_failure {   // l.token.type != .semicolon &&
-          parse_shit(l, &ins.params)
-          if l.token.type == .comma_char do lx.get_token(l)
-          // fmt.println(l.token)
-        }
+        parse_shit(l, &ins.params)
 
         if len(ins.params) > auto_cast ins.type_num && fn.instr != .extrn {
           fmt.eprintln("too many args for the function", ins.name)
         }
-
-        if l.token.type != .either_end_or_failure {
-          if !lx.check_type(l, .close_parenthesis) do os.exit(1)
-          lx.get_token(l)
-          if !lx.check_type(l, .semicolon) do os.exit(1)
-        }
-
-        // lx.get_token(l)
 
 
       } else {
@@ -535,13 +531,6 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
     parse_shit(l, instrs)
     instrs[len(instrs) - 1].ptr = true
     return
-
-  // case .semicolon:
-  //   lx.get_token(l)
-  //   return
-
-  // case .either_end_or_failure:
-  //   return
 
   case:
     if l.token.charlit {

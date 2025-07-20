@@ -1,4 +1,7 @@
+// TODO: implement most libc functions
+
 extrn printf
+extrn putchar
 extrn exit
 extrn fopen
 extrn fclose

@@ -608,8 +608,15 @@ generate_instr :: proc(
       }
 
     case .if_:
-      // instr.name = ""
-      // // instr.type = parent_ptr.type
+      old_off := instr.offset
+      instr.offset = -14
+
+      fmt.sbprintf(b, "  mov QWORD[cmp_0], 0\n")
+      generate_instr(b, instr.params[:], &instr)
+      fmt.sbprintf(b, "  cmp BYTE[cmp_0], 1\n")
+      fmt.sbprintf(b, "  je label_%d\n", old_off)
+
+    case .while:
       old_off := instr.offset
       instr.offset = -14
 

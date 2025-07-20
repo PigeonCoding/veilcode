@@ -1,0 +1,8 @@
+$include "../std/libc"
+
+let t: int = 6;
+
+while (t > 0) {
+  printf("Hello %d\n", t);
+  t = t - 1;
+}

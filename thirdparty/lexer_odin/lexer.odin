@@ -319,11 +319,14 @@ init_lexer :: proc(file: string) -> lexer {
   l: lexer
   l.file = file
 
-  str, _ := read_file(file)
+  str, err := read_file(file)
+  if err != nil {
+    fmt.eprintfln("could not open file %s, because {}", file, err)
+  }
   str, _ = strings.replace_all(str, "\r\n", "\n")
   l.content, _ = string_to_u8(&str).?
   if len(l.content) == 0 {
-    fmt.println("file", file, "either does not exist or is not readable")
+    fmt.println("file", file, "is empty")
     os.exit(1)
   }
   delete(str)

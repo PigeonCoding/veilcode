@@ -16,6 +16,7 @@ n_instrs_enum :: enum {
   jmp,
   nothing,
   if_,
+  while,
   label,
   eq,
   noteq,
