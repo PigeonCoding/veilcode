@@ -12,12 +12,12 @@ label_stack: [dynamic]uint
 @(private)
 label_counter: uint = 0
 
-peek :: proc(l: lx.lexer) -> lx.token_id {
+peek :: proc(l: lx.lexer) -> lx.token {
   b_l: lx.lexer
   b_l = l
   lx.get_token(&b_l)
 
-  return b_l.token.type
+  return b_l.token
 }
 
 is_char_lit :: proc(c: byte) -> bool {return c >= 0 && c <= 255}
@@ -101,76 +101,119 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
   case .plus_sign:
     ins.instr = .add
     lx.get_token(l)
-    if !l.token.charlit && l.token.type != .intlit && l.token.type != .id {
-      fmt.eprintln("didn't expect this token", l.token)
-      os.exit(1)
-    }
+    if l.token.charlit {
+      ins.instr = .push
+      ins.val = auto_cast l.token.type
+      lx.get_token(l)
+    } else {
+      if !l.token.charlit && l.token.type != .intlit && l.token.type != .id && !l.token.charlit {
+        fmt.eprintln("didn't expect this token", l.token)
+        os.exit(1)
+      }
 
-    parse_shit(l, &ins.params)
+      parse_shit(l, &ins.params)
+    }
 
   case .less_than_sign:
     ins.instr = .less
 
     lx.get_token(l)
-    if !l.token.charlit && l.token.type != .intlit && l.token.type != .id {
-      fmt.eprintln("didn't expect this token", l.token)
-      os.exit(1)
-    }
+    if l.token.charlit {
+      ins.instr = .push
+      ins.val = auto_cast l.token.type
+      lx.get_token(l)
+    } else {
+      if !l.token.charlit && l.token.type != .intlit && l.token.type != .id && !l.token.charlit {
+        fmt.eprintln("didn't expect this token", l.token)
+        os.exit(1)
+      }
 
-    parse_shit(l, &ins.params)
+      parse_shit(l, &ins.params)
+    }
 
   case .greater_than_sign:
     ins.instr = .greater
 
     lx.get_token(l)
-    if !l.token.charlit && l.token.type != .intlit && l.token.type != .id {
-      fmt.eprintln("didn't expect this token", l.token)
-      os.exit(1)
-    }
+    if l.token.charlit {
+      ins.instr = .push
+      ins.val = auto_cast l.token.type
+      lx.get_token(l)
+    } else {
+      if !l.token.charlit && l.token.type != .intlit && l.token.type != .id && !l.token.charlit {
+        fmt.eprintln("didn't expect this token", l.token)
+        os.exit(1)
+      }
 
-    parse_shit(l, &ins.params)
+      parse_shit(l, &ins.params)
+    }
 
 
   case .asterisk:
     ins.instr = .mult
     lx.get_token(l)
-    if !l.token.charlit && l.token.type != .intlit && l.token.type != .id {
-      fmt.eprintln("didn't expect this token", l.token)
-      os.exit(1)
-    }
+    fmt.println(l.token)
+    if l.token.charlit {
+      ins.instr = .push
+      ins.val = auto_cast l.token.type
+      lx.get_token(l)
+    } else {
+      if !l.token.charlit && l.token.type != .intlit && l.token.type != .id && !l.token.charlit {
+        fmt.eprintln("didn't expect this token", l.token)
+        os.exit(1)
+      }
 
-    parse_shit(l, &ins.params)
+      parse_shit(l, &ins.params)
+    }
 
   case .forward_slash:
     ins.instr = .div
     lx.get_token(l)
-    if !l.token.charlit && l.token.type != .intlit && l.token.type != .id {
-      fmt.eprintln("didn't expect this token", l.token)
-      os.exit(1)
-    }
+    if l.token.charlit {
+      ins.instr = .push
+      ins.val = auto_cast l.token.type
+      lx.get_token(l)
+    } else {
+      if !l.token.charlit && l.token.type != .intlit && l.token.type != .id && !l.token.charlit {
+        fmt.eprintln("didn't expect this token", l.token)
+        os.exit(1)
+      }
 
-    parse_shit(l, &ins.params)
+      parse_shit(l, &ins.params)
+    }
 
 
   case .minus_sign:
     ins.instr = .sub
     lx.get_token(l)
-    if !l.token.charlit && l.token.type != .intlit && l.token.type != .id {
-      fmt.eprintln("didn't expect this token", l.token)
-      os.exit(1)
-    }
+    if l.token.charlit {
+      ins.instr = .push
+      ins.val = auto_cast l.token.type
+      lx.get_token(l)
+    } else {
+      if !l.token.charlit && l.token.type != .intlit && l.token.type != .id && !l.token.charlit {
+        fmt.eprintln("didn't expect this token", l.token)
+        os.exit(1)
+      }
 
-    parse_shit(l, &ins.params)
+      parse_shit(l, &ins.params)
+    }
 
   case .percent_sign:
     ins.instr = .mod
     lx.get_token(l)
-    if !l.token.charlit && l.token.type != .intlit && l.token.type != .id {
-      fmt.eprintln("didn't expect this token", l.token)
-      os.exit(1)
-    }
+    if l.token.charlit {
+      ins.instr = .push
+      ins.val = auto_cast l.token.type
+      lx.get_token(l)
+    } else {
+      if !l.token.charlit && l.token.type != .intlit && l.token.type != .id && !l.token.charlit {
+        fmt.eprintln("didn't expect this token", l.token)
+        os.exit(1)
+      }
 
-    parse_shit(l, &ins.params)
+      parse_shit(l, &ins.params)
+    }
 
 
   // case .close_parenthesis, .close_brace:
@@ -183,7 +226,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         l.token.type != .either_end_or_failure {
       parse_shit(l, instrs)
     }
-    if !lx.check_type(l, .close_brace) do os.exit(1)
+    // if !lx.check_type(l, .close_brace) do os.exit(1)
     lx.get_token(l)
     return
 
@@ -195,7 +238,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
       parse_shit(l, instrs)
       if l.token.type == .comma_char do lx.get_token(l)
     }
-    if !lx.check_type(l, .close_parenthesis) do os.exit(1)
+    // if !lx.check_type(l, .close_parenthesis) do os.exit(1)
     lx.get_token(l)
     return
 
@@ -236,7 +279,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
 
       if l.token.type == .open_bracket {
         lx.get_token(l)
-        // maybe support variables here at some point
+        // TODO: maybe support variables here at some point when dynamic allocs are implemented
         if !lx.check_type(l, .intlit) do os.exit(1)
 
         ins.type_num = auto_cast l.token.intlit
@@ -266,10 +309,6 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         }
       }
 
-      // fmt.println(l.token)
-
-      // os.exit(1)
-
       lx.get_token(l)
 
     case "extrn":
@@ -278,7 +317,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
       lx.get_token(l)
       if !lx.check_type(l, .id) do os.exit(1)
       ins.name = l.token.str
-      if p := peek(l^); p != .either_end_or_failure && p == .dqstring {
+      if p := peek(l^); p.type != .either_end_or_failure && p.type == .dqstring {
         lx.get_token(l)
         ins.optional = l.token.str
       }
@@ -289,7 +328,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
       ins4: cm.n_instrs
       ins4.instr = .label
       ins4.offset = auto_cast label_counter
-      label_counter = 1
+      label_counter += 1
       append(instrs, ins4)
 
 
@@ -337,10 +376,9 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
 
       parse_shit(l, &ins.params)
 
+
       append(instrs, ins)
 
-
-      if !lx.check_type(l, .open_brace) do os.exit(1)
       ins2: cm.n_instrs
       ins2.instr = .block
       ins2.offset = auto_cast label_counter
@@ -350,12 +388,10 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
 
       append(instrs, ins2)
 
-
-      // lx.get_token(l)
-      if l.token.str == "else" {
-
+      if l.token.str == "else" || peek(l^).str == "else" {
         lx.get_token(l)
-        if !lx.check_type(l, .open_brace) do os.exit(1)
+        lx.get_token(l)
+        // if !lx.check_type(l, .open_brace) do os.exit(1)
 
 
         ins3: cm.n_instrs
@@ -378,7 +414,7 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         ins3.offset = auto_cast label_counter
         label_counter += 1
 
-        if !lx.check_type(l, .open_brace) do os.exit(1)
+        // if !lx.check_type(l, .open_brace) do os.exit(1)
         parse_shit(l, &ins3.params)
 
         append(instrs, ins3)
@@ -466,12 +502,16 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         if l.token.type == .open_bracket {
           lx.get_token(l)
           // TODO: support variables maybe when dynamic allocs are made
-          if l.token.type == .intlit {
-            ins.offset = auto_cast l.token.intlit
-            lx.get_token(l)
-            if l.token.type != .close_bracket do os.exit(1)
-            lx.get_token(l)
+
+          
+          parse_shit(l, &ins.params)
+          if ins.params[0].instr == .load || ins.params[0].instr == .push do ins.offset = -1
+          else {
+            fmt.println("unreachable probably")
+            unreachable()
           }
+
+          lx.get_token(l)
         }
 
         if l.token.type == .pipe {

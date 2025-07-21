@@ -58,6 +58,8 @@ syscall_reg_list := [?]([]string) {
 sys_reg_offset := [?]int{-1, 0, 0, 3, 3}
 @(private)
 conv_list := [?]string{"none", "QWORD", "QWORD", "BYTE", "QWORD"}
+// @(private)
+// sz_list := [?]int{0, 8, 8, 1, 8}
 
 @(private)
 s: strings.Builder
@@ -246,15 +248,10 @@ generate_blocks :: proc(b: ^strings.Builder, instrs: []cm.n_instrs) {
 generate :: proc(instrs: []cm.n_instrs) -> string {
   res: strings.Builder
 
+
   generate_fluf_start(&res)
   generate_vars(&res, instrs)
   generate_strs(&res, instrs)
-
-  {
-    // fmt.println(string(res.buf[:]))
-    // os.exit(1)
-  }
-
 
   cm.builder_append_string(&res, "section '.text' executable\n")
 
@@ -263,7 +260,7 @@ generate :: proc(instrs: []cm.n_instrs) -> string {
   cm.builder_append_string(&res, "public main\n")
   cm.builder_append_string(&res, "main:\n")
 
-  // cm.print_instrs(instrs)
+  cm.print_instrs(instrs)
   generate_instr(&res, instrs)
 
   cm.builder_append_string(&res, "  mov rax, 0\n")
@@ -315,7 +312,44 @@ generate_instr :: proc(
       fmt.sbprintf(b, "  %s = PLT _%s\n", instr.name, instr.name)
 
     case .assign:
-      generate_instr(b, instr.params[:], &instr)
+      instr.offset = 0
+
+      if instr.params[0].instr == .push {
+        instr.val = auto_cast instr.params[0].val
+        generate_instr(b, instr.params[:], &instr)
+      } else {
+
+        numn := instr.params[0]
+        generate_instr(b, {numn})
+        ordered_remove(&instr.params, 0)
+
+        fmt.sbprintf(b, "  pop r15\n")
+
+        if numn.deref {
+          fmt.sbprintf(b, ";; ----deref\n")
+        } else if numn.ptr {
+          fmt.sbprintf(b, "  mov QWORD[%s_%d], r15\n", instr.name, instr.offset)
+        } else {
+          old := instr.name
+          instr.name = "tmp"
+          instr.offset = 0
+
+          generate_instr(b, instr.params[:], &instr)
+
+
+          fmt.sbprintf(b, "  mov r14, [tmp_0]\n")
+
+          fmt.sbprintf(
+            b,
+            "  mov %s[%s_0 + r15], %s ;hjikuihk\n",
+            conv_list[auto_cast instr.type],
+            old,
+            syscall_reg_list[R14][sys_reg_offset[auto_cast instr.type]],
+          )
+        }
+
+
+      }
 
     case .sub:
       if pptr {
@@ -533,40 +567,120 @@ generate_instr :: proc(
       if pptr {
         if parent_ptr.offset < 0 {
           if parent_ptr.offset < -1 {
-            fmt.sbprintf(
-              b,
-              "  xor %s, %s\n  mov %s, %c%s_%d%c\n",
-              syscall_reg_list[-parent_ptr.offset - 2][0],
-              syscall_reg_list[-parent_ptr.offset - 2][0],
-              syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
-              // conv_list[instr.ptr ? 1 : int(instr.type)],
-              instr.ptr ? ' ' : '[',
-              instr.name,
-              instr.offset,
-              instr.ptr ? ' ' : ']',
-            )
-
-            if instr.deref {
-
-              if instr.optional == "char" {
-                fmt.sbprintf(b, "  xor r13, r13\n")
-                fmt.sbprintf(b, "  mov r13b, [%s]\n", syscall_reg_list[-parent_ptr.offset - 2][0])
-                fmt.sbprintf(b, "  mov %s, r13\n", syscall_reg_list[-parent_ptr.offset - 2][0])
-
-              } else {
-                // TODO: maybe 16/32 bits later
+            if len(instr.params) > 0 {
+              if instr.params[0].instr == .push {
+                instr.offset = auto_cast instr.params[0].val
+                unordered_remove(&instr.params, 0)
                 fmt.sbprintf(
                   b,
-                  "  mov %s, [%s]\n",
+                  "  xor %s, %s\n  mov %s, %c%s_%d%c\n",
                   syscall_reg_list[-parent_ptr.offset - 2][0],
                   syscall_reg_list[-parent_ptr.offset - 2][0],
+                  syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
+                  // conv_list[instr.ptr ? 1 : int(instr.type)],
+                  instr.ptr ? ' ' : '[',
+                  instr.name,
+                  instr.offset,
+                  instr.ptr ? ' ' : ']',
                 )
+
+                if len(instr.params) > 0 {
+                  fmt.eprintln("cannot do ops in in brackets sorry")
+                  os.exit(1)
+                }
+
+              } else {
+
+
+                numn := instr.params[0]
+                generate_instr(b, {numn})
+                ordered_remove(&instr.params, 0)
+
+                if len(instr.params) > 0 {
+                  fmt.eprintln("cannot do ops in in brackets sorry")
+                  os.exit(1)
+                }
+
+
+                if numn.deref {
+                  fmt.sbprintf(b, ";----deref\n")
+                  fmt.sbprintf(
+                    b,
+                    "  xor %s, %s\n",
+                    syscall_reg_list[-parent_ptr.offset - 2][0],
+                    syscall_reg_list[-parent_ptr.offset - 2][0],
+                  )
+                  fmt.sbprintf(b, "  pop r15\n")
+                  fmt.sbprintf(b, "  mov r15, [r15]\n")
+                  fmt.sbprintf(
+                    b,
+                    "  xor %s, %s\n",
+                    syscall_reg_list[-parent_ptr.offset - 2][0],
+                    syscall_reg_list[-parent_ptr.offset - 2][0],
+                  )
+                  fmt.sbprintf(
+                    b,
+                    "  mov %s, [%s_0 + r15]\n",
+                    syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
+                    instr.name,
+                  )
+
+
+                } else if numn.ptr {
+                  fmt.sbprintln(b, ";-----ptr")
+                } else {
+                  fmt.sbprintf(b, "  pop r15\n")
+                  fmt.sbprintf(
+                    b,
+                    "  xor %s, %s\n",
+                    syscall_reg_list[-parent_ptr.offset - 2][0],
+                    syscall_reg_list[-parent_ptr.offset - 2][0],
+                  )
+                  fmt.sbprintf(
+                    b,
+                    "  mov %s, [%s_0 + r15]\n",
+                    syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
+                    instr.name,
+                  )
+                }
               }
+            } else {
+              fmt.sbprintf(
+                b,
+                "  xor %s, %s\n  mov %s, %c%s_%d%c\n",
+                syscall_reg_list[-parent_ptr.offset - 2][0],
+                syscall_reg_list[-parent_ptr.offset - 2][0],
+                syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
+                // conv_list[instr.ptr ? 1 : int(instr.type)],
+                instr.ptr ? ' ' : '[',
+                instr.name,
+                instr.offset,
+                instr.ptr ? ' ' : ']',
+              )
+
             }
+
+
+            // if instr.deref {
+
+            //   if instr.optional == "char" {
+            //     fmt.sbprintf(b, "  xor r13, r13\n")
+            //     fmt.sbprintf(b, "  mov r13b, [%s]\n", syscall_reg_list[-parent_ptr.offset - 2][0])
+            //     fmt.sbprintf(b, "  mov %s, r13\n", syscall_reg_list[-parent_ptr.offset - 2][0])
+
+            //   } else {
+            //     // TODO: maybe 16/32 bits later
+            //     fmt.sbprintf(
+            //       b,
+            //       "  mov %s, [%s];000\n",
+            //       syscall_reg_list[-parent_ptr.offset - 2][0],
+            //       syscall_reg_list[-parent_ptr.offset - 2][0],
+            //     )
+            //   }
+            // }
 
             parent_ptr.offset -= 1
           } else {
-
             fmt.sbprintf(
               b,
               "  mov %s, %s_%d\n",
@@ -579,11 +693,11 @@ generate_instr :: proc(
         } else {
           fmt.sbprintf(
             b,
-            "  mov %s, %c%s_%d%c; hi\n",
+            "  mov %s, %c%s_%d%c\n",
             syscall_reg_list[R14][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
             instr.ptr ? ' ' : '[',
             instr.name,
-            instr.offset,
+            instr.offset >= 0 ? instr.offset : 0,
             instr.ptr ? ' ' : ']',
           )
 
@@ -600,10 +714,12 @@ generate_instr :: proc(
       } else {
         fmt.sbprintf(
           b,
-          "  push %s[%s_%d]\n",
+          "  push %s%c%s_%d%c\n",
           conv_list[auto_cast instr.type],
+          instr.ptr ? ' ' : '[',
           instr.name,
           instr.offset,
+          instr.ptr ? ' ' : ']',
         )
       }
 
@@ -664,7 +780,7 @@ generate_instr :: proc(
         // 1 2 3 4 5 | 6 7
         //     | 
         ii := len(instr.params) - 1
-        fmt.println(i, ii)
+        // fmt.println(i, ii)
         for ii >= i {
           ins := instr.params[ii]
           if ins.instr == .load {
@@ -674,12 +790,7 @@ generate_instr :: proc(
           }
           ii -= 1
         }
-
-        // fmt.println(string(b.buf[:]))
-
-        // os.exit(1)
       } else {
-        // instr.name = "reg"
         instr.offset = -2
         generate_instr(b, instr.params[:], &instr)
 
