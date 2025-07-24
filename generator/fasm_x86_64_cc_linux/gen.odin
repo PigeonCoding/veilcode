@@ -10,34 +10,35 @@ prt_asm := false
 @(private)
 counter: uint = 0
 @(private)
-RDI :: 0
+RDI :: 0 + 1
 @(private)
-RSI :: 1
+RSI :: 1 + 1
 @(private)
-RDX :: 2
+RDX :: 2 + 1
 @(private)
-RCX :: 3
+RCX :: 3 + 1
 @(private)
-R8 :: 4
+R8 :: 4 + 1
 @(private)
-R9 :: 5
+R9 :: 5 + 1
 @(private)
-R10 :: 6
+R10 :: 6 + 1
 @(private)
-RBX :: 7
+RBX :: 7 + 1
 @(private)
-R15 :: 8
+R15 :: 8 + 1
 @(private)
-R14 :: 9
+R14 :: 9 + 1
 @(private)
-R13 :: 10
+R13 :: 10 + 1
 @(private)
-R12 :: 11
+R12 :: 11 + 1
 @(private)
-R11 :: 12
+R11 :: 12 + 1
 @(private)
-RAX :: 13
+RAX :: 13 + 1
 syscall_reg_list := [?]([]string) {
+  {},
   []string{"rdi", "edi", "di", "dil"},
   []string{"rsi", "esi", "si", "sil"},
   []string{"rdx", "edx", "dx", "dl"},
@@ -301,61 +302,69 @@ generate_instr :: proc(
   parent_ptr: ^cm.n_instrs = nil,
 ) {
   pptr := parent_ptr != nil
-  // fmt.println("---------------------------------")
-  for &instr, i in instrs {
-    // cm.print_instrs(instrs[i:i + 1])
 
+  for &instr, i in instrs {
     #partial switch instr.instr {
+    case .nothing, .fn_declare:
     case .extrn:
       if instr.optional == "" do instr.optional = instr.name
       fmt.sbprintf(b, "  extrn '%s' as _%s\n", instr.optional, instr.name)
       fmt.sbprintf(b, "  %s = PLT _%s\n", instr.name, instr.name)
 
     case .assign:
-      instr.offset = 0
+      ins: cm.n_instrs
+      ins.name = "tmp"
+      ins.type = instr.type
+      ins.type_num = instr.type_num
 
-      if instr.params[0].instr == .push {
-        instr.val = auto_cast instr.params[0].val
-        generate_instr(b, instr.params[:], &instr)
-      } else {
+      generate_instr(b, instr.params[:], &instr)
 
-        numn := instr.params[0]
-        generate_instr(b, {numn})
-        ordered_remove(&instr.params, 0)
 
-        fmt.sbprintf(b, "  pop r15\n")
+    case .push:
+      fmt.println("push", instr)
+      if pptr {
+        if parent_ptr.offset < 0 {
+          fmt.sbprintf(b, "  mov %s, %d\n", syscall_reg_list[-parent_ptr.offset][0], instr.val)
+          parent_ptr.offset -= 1
 
-        if numn.deref {
-          fmt.sbprintf(b, ";; ----deref\n")
-        } else if numn.ptr {
-          fmt.sbprintf(b, "  mov QWORD[%s_%d], r15\n", instr.name, instr.offset)
         } else {
-          old := instr.name
-          instr.name = "tmp"
-          instr.offset = 0
+          if instr.optional == "" {
+            fmt.sbprintf(
+              b,
+              "  mov %s%c%s_%d%c, %d\n",
+              conv_list[auto_cast parent_ptr.type],
+              parent_ptr.ptr ? ' ' : '[',
+              parent_ptr.name,
+              parent_ptr.offset,
+              parent_ptr.ptr ? ' ' : ']',
+              instr.val,
+            )
+          } else {
+            fmt.sbprintf(
+              b,
+              "  mov %s%c%s_%d%c, \"%s\"\n",
+              conv_list[auto_cast parent_ptr.type],
+              parent_ptr.ptr ? ' ' : '[',
+              parent_ptr.name,
+              parent_ptr.offset,
+              parent_ptr.ptr ? ' ' : ']',
+              instr.optional,
+            )
 
-          generate_instr(b, instr.params[:], &instr)
-
-
-          fmt.sbprintf(b, "  mov r14, [tmp_0]\n")
-
-          fmt.sbprintf(
-            b,
-            "  mov %s[%s_0 + r15], %s ;hjikuihk\n",
-            conv_list[auto_cast instr.type],
-            old,
-            syscall_reg_list[R14][sys_reg_offset[auto_cast instr.type]],
-          )
+          }
         }
 
 
+      } else {
+        fmt.println("push push")
+        unreachable()
       }
 
     case .sub:
       if pptr {
         instr.name = ""
         instr.type = parent_ptr.type
-        instr.offset = -11
+        instr.offset = -R15
         generate_instr(b, instr.params[:], &instr)
         fmt.sbprintf(
           b,
@@ -365,19 +374,18 @@ generate_instr :: proc(
           parent_ptr.name,
           parent_ptr.offset,
           parent_ptr.ptr ? ' ' : ']',
-          syscall_reg_list[9][sys_reg_offset[auto_cast instr.type]],
+          syscall_reg_list[R15][sys_reg_offset[auto_cast instr.type]],
         )
 
       } else {
         assert(false, "sub pushed")
       }
 
-
     case .add:
       if pptr {
         instr.name = ""
         instr.type = parent_ptr.type
-        instr.offset = -11
+        instr.offset = -R15
         generate_instr(b, instr.params[:], &instr)
         fmt.sbprintf(
           b,
@@ -387,7 +395,7 @@ generate_instr :: proc(
           parent_ptr.name,
           parent_ptr.offset,
           parent_ptr.ptr ? ' ' : ']',
-          syscall_reg_list[9][sys_reg_offset[auto_cast instr.type]],
+          syscall_reg_list[R15][sys_reg_offset[auto_cast instr.type]],
         )
 
       } else {
@@ -398,12 +406,12 @@ generate_instr :: proc(
       if pptr {
         instr.name = ""
         instr.type = parent_ptr.type
-        instr.offset = -11
+        instr.offset = -R15
         generate_instr(b, instr.params[:], &instr)
         fmt.sbprintf(
           b,
           "  imul %s, %s%c%s_%d%c\n",
-          syscall_reg_list[9][sys_reg_offset[auto_cast instr.type]],
+          syscall_reg_list[R15][sys_reg_offset[auto_cast instr.type]],
           conv_list[auto_cast parent_ptr.type],
           parent_ptr.ptr ? ' ' : '[',
           parent_ptr.name,
@@ -418,7 +426,7 @@ generate_instr :: proc(
           parent_ptr.name,
           parent_ptr.offset,
           parent_ptr.ptr ? ' ' : ']',
-          syscall_reg_list[9][sys_reg_offset[auto_cast instr.type]],
+          syscall_reg_list[R15][sys_reg_offset[auto_cast instr.type]],
         )
 
       } else {
@@ -427,10 +435,10 @@ generate_instr :: proc(
 
     case .div:
       if pptr {
-        instr.name = ""
+        // instr.name = ""
         instr.type = parent_ptr.type
-        instr.offset = -2
-        fmt.sbprintf(b, "  push rax\n")
+        instr.offset = -RAX
+        // fmt.sbprintf(b, "  push rax\n")
         generate_instr(b, instr.params[:], &instr)
         fmt.sbprintf(
           b,
@@ -463,7 +471,7 @@ generate_instr :: proc(
           parent_ptr.offset,
           parent_ptr.ptr ? ' ' : ']',
         )
-        fmt.sbprintf(b, "  pop rax\n")
+        // fmt.sbprintf(b, "  pop rax\n")
 
 
       } else {
@@ -472,10 +480,10 @@ generate_instr :: proc(
 
     case .mod:
       if pptr {
-        instr.name = ""
+        // instr.name = ""
         instr.type = parent_ptr.type
-        instr.offset = -2
-        fmt.sbprintf(b, "  push rax\n")
+        instr.offset = -RAX
+        // fmt.sbprintf(b, "  push rax\n")
         generate_instr(b, instr.params[:], &instr)
         fmt.sbprintf(
           b,
@@ -508,251 +516,102 @@ generate_instr :: proc(
           parent_ptr.offset,
           parent_ptr.ptr ? ' ' : ']',
         )
-        fmt.sbprintf(b, "  pop rax\n")
+        // fmt.sbprintf(b, "  pop rax\n")
 
 
       } else {
         assert(false, "div pushed")
       }
 
-
-    case .push:
+    case .eq:
       if pptr {
-        if parent_ptr.offset < 0 {
-          if parent_ptr.offset < -1 {
-            fmt.sbprintf(
-              b,
-              "  mov %s, %d\n",
-              syscall_reg_list[-parent_ptr.offset - 2][0],
-              instr.val,
-            )
-            parent_ptr.offset -= 1
-          } else {
-            fmt.sbprintf(b, "  mov %s, %d\n", parent_ptr.name, instr.val)
-          }
-        } else {
+        instr.name = ""
+        instr.type = parent_ptr.type
+        instr.offset = -R12
 
-          if instr.optional == "" {
-            fmt.sbprintf(
-              b,
-              "  mov %s%c%s_%d%c, %d\n",
-              conv_list[auto_cast parent_ptr.type],
-              parent_ptr.ptr ? ' ' : '[',
-              parent_ptr.name,
-              parent_ptr.offset,
-              parent_ptr.ptr ? ' ' : ']',
-              instr.val,
-            )
-          } else {
-            fmt.sbprintf(
-              b,
-              "  mov %s%c%s_%d%c, \"%s\"\n",
-              conv_list[auto_cast parent_ptr.type],
-              parent_ptr.ptr ? ' ' : '[',
-              parent_ptr.name,
-              parent_ptr.offset,
-              parent_ptr.ptr ? ' ' : ']',
-              instr.optional,
-            )
+        generate_instr(b, instr.params[:], &instr)
 
-          }
-
-        }
-
-      } else {
-        fmt.sbprintf(b, "  push %d\n", instr.val)
-      }
-
-    case .load:
-      if pptr {
-        if parent_ptr.offset < 0 {
-          if parent_ptr.offset < -1 {
-            if len(instr.params) > 0 {
-              if instr.params[0].instr == .push {
-                instr.offset = auto_cast instr.params[0].val
-                unordered_remove(&instr.params, 0)
-                fmt.sbprintf(
-                  b,
-                  "  xor %s, %s\n  mov %s, %c%s_%d%c\n",
-                  syscall_reg_list[-parent_ptr.offset - 2][0],
-                  syscall_reg_list[-parent_ptr.offset - 2][0],
-                  syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
-                  // conv_list[instr.ptr ? 1 : int(instr.type)],
-                  instr.ptr ? ' ' : '[',
-                  instr.name,
-                  instr.offset,
-                  instr.ptr ? ' ' : ']',
-                )
-
-                if len(instr.params) > 0 {
-                  fmt.eprintln("cannot do ops in in brackets sorry")
-                  os.exit(1)
-                }
-
-              } else {
-
-
-                numn := instr.params[0]
-                generate_instr(b, {numn})
-                ordered_remove(&instr.params, 0)
-
-                if len(instr.params) > 0 {
-                  fmt.eprintln("cannot do ops in in brackets sorry")
-                  os.exit(1)
-                }
-
-
-                if numn.deref {
-                  fmt.sbprintf(b, ";----deref\n")
-                  fmt.sbprintf(
-                    b,
-                    "  xor %s, %s\n",
-                    syscall_reg_list[-parent_ptr.offset - 2][0],
-                    syscall_reg_list[-parent_ptr.offset - 2][0],
-                  )
-                  fmt.sbprintf(b, "  pop r15\n")
-                  fmt.sbprintf(b, "  mov r15, [r15]\n")
-                  fmt.sbprintf(
-                    b,
-                    "  xor %s, %s\n",
-                    syscall_reg_list[-parent_ptr.offset - 2][0],
-                    syscall_reg_list[-parent_ptr.offset - 2][0],
-                  )
-                  fmt.sbprintf(
-                    b,
-                    "  mov %s, [%s_0 + r15]\n",
-                    syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
-                    instr.name,
-                  )
-
-
-                } else if numn.ptr {
-                  fmt.sbprintln(b, ";-----ptr")
-                } else {
-                  fmt.sbprintf(b, "  pop r15\n")
-                  fmt.sbprintf(
-                    b,
-                    "  xor %s, %s\n",
-                    syscall_reg_list[-parent_ptr.offset - 2][0],
-                    syscall_reg_list[-parent_ptr.offset - 2][0],
-                  )
-                  fmt.sbprintf(
-                    b,
-                    "  mov %s, [%s_0 + r15]\n",
-                    syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
-                    instr.name,
-                  )
-                }
-              }
-            } else {
-              fmt.sbprintf(
-                b,
-                "  xor %s, %s\n  mov %s, %c%s_%d%c\n",
-                syscall_reg_list[-parent_ptr.offset - 2][0],
-                syscall_reg_list[-parent_ptr.offset - 2][0],
-                syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
-                // conv_list[instr.ptr ? 1 : int(instr.type)],
-                instr.ptr ? ' ' : '[',
-                instr.name,
-                instr.offset,
-                instr.ptr ? ' ' : ']',
-              )
-
-            }
-
-
-            // if instr.deref {
-
-            //   if instr.optional == "char" {
-            //     fmt.sbprintf(b, "  xor r13, r13\n")
-            //     fmt.sbprintf(b, "  mov r13b, [%s]\n", syscall_reg_list[-parent_ptr.offset - 2][0])
-            //     fmt.sbprintf(b, "  mov %s, r13\n", syscall_reg_list[-parent_ptr.offset - 2][0])
-
-            //   } else {
-            //     // TODO: maybe 16/32 bits later
-            //     fmt.sbprintf(
-            //       b,
-            //       "  mov %s, [%s];000\n",
-            //       syscall_reg_list[-parent_ptr.offset - 2][0],
-            //       syscall_reg_list[-parent_ptr.offset - 2][0],
-            //     )
-            //   }
-            // }
-
-            parent_ptr.offset -= 1
-          } else {
-            fmt.sbprintf(
-              b,
-              "  mov %s, %s_%d\n",
-              parent_ptr.name,
-              // conv_list[auto_cast instr.type],
-              instr.name,
-              instr.offset,
-            )
-          }
-        } else {
-          fmt.sbprintf(
-            b,
-            "  mov %s, %c%s_%d%c\n",
-            syscall_reg_list[R14][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
-            instr.ptr ? ' ' : '[',
-            instr.name,
-            instr.offset >= 0 ? instr.offset : 0,
-            instr.ptr ? ' ' : ']',
-          )
-
-          fmt.sbprintf(
-            b,
-            "  mov %s[%s_%d], %s\n",
-            conv_list[auto_cast parent_ptr.type],
-            parent_ptr.name,
-            parent_ptr.offset,
-            syscall_reg_list[R14][instr.ptr ? 0 : sys_reg_offset[auto_cast parent_ptr.type]],
-          )
-        }
-
-      } else {
         fmt.sbprintf(
           b,
-          "  push %s%c%s_%d%c\n",
-          conv_list[auto_cast instr.type],
-          instr.ptr ? ' ' : '[',
-          instr.name,
-          instr.offset,
-          instr.ptr ? ' ' : ']',
-        )
+          "  cmp %s[%s_%d], %s\n",
+          conv_list[auto_cast parent_ptr.type],
+          parent_ptr.name,
+          parent_ptr.offset,
+          syscall_reg_list[R12][sys_reg_offset[auto_cast parent_ptr.type]],
+        ) // num1 < = > num2
+        fmt.sbprintf(b, "  setne BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
+      } else {
+        fmt.println("eq pushed")
+        unreachable()
       }
 
-    case .if_:
-      old_off := instr.offset
-      instr.offset = -14
+    case .noteq:
+      if pptr {
+        instr.name = ""
+        instr.type = parent_ptr.type
+        instr.offset = -R12
 
-      fmt.sbprintf(b, "  mov QWORD[cmp_0], 0\n")
-      generate_instr(b, instr.params[:], &instr)
-      fmt.sbprintf(b, "  cmp BYTE[cmp_0], 1\n")
-      fmt.sbprintf(b, "  je label_%d\n", old_off)
+        generate_instr(b, instr.params[:], &instr)
 
-    case .while:
-      old_off := instr.offset
-      instr.offset = -14
+        fmt.sbprintf(
+          b,
+          "  cmp %s[%s_%d], %s\n",
+          conv_list[auto_cast parent_ptr.type],
+          parent_ptr.name,
+          parent_ptr.offset,
+          syscall_reg_list[R12][sys_reg_offset[auto_cast parent_ptr.type]],
+        ) // num1 < = > num2
+        fmt.sbprintf(b, "  sete BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
+      } else {
+        fmt.println("noteq pushed")
+        unreachable()
+      }
 
-      fmt.sbprintf(b, "  mov QWORD[cmp_0], 0\n")
-      generate_instr(b, instr.params[:], &instr)
-      fmt.sbprintf(b, "  cmp BYTE[cmp_0], 1\n")
-      fmt.sbprintf(b, "  je label_%d\n", old_off)
+    case .less:
+      if pptr {
+        // instr.name = ""
+        instr.type = parent_ptr.type
+        instr.offset = -R12
 
+        generate_instr(b, instr.params[:], &instr)
+        fmt.println(string(b.buf[:]))
+        fmt.sbprintf(
+          b,
+          "  cmp %s[%s_%d], %s\n",
+          conv_list[auto_cast parent_ptr.type],
+          parent_ptr.name,
+          parent_ptr.offset,
+          syscall_reg_list[R12][sys_reg_offset[parent_ptr.type != .n_none || parent_ptr.instr != .if_ ? auto_cast parent_ptr.type : auto_cast instr.type]],
+        ) // num1 < = > num2
+        fmt.sbprintf(b, "  setl BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
+      } else {
+        fmt.println("less pushed")
+        unreachable()
 
-    case .label:
-      fmt.sbprintf(b, "label_%d:\n", instr.offset)
+      }
 
-    case .jmp:
-      fmt.sbprintf(b, "  jmp label_%d\n", instr.offset)
+    case .greater:
+      if pptr {
+        instr.name = ""
+        instr.type = parent_ptr.type
+        instr.offset = -R12
 
-    case .fn:
+        generate_instr(b, instr.params[:], &instr)
 
-    case .block:
-      fmt.sbprintf(b, "  xor rax, rax\n")
-      fmt.sbprintf(b, "  call block_%d\n", instr.offset)
+        fmt.sbprintf(
+          b,
+          "  cmp %s[%s_%d], %s\n",
+          conv_list[auto_cast parent_ptr.type],
+          parent_ptr.name,
+          parent_ptr.offset,
+          syscall_reg_list[R12][sys_reg_offset[auto_cast parent_ptr.type]],
+        ) // num1 < = > num2
+        fmt.sbprintf(b, "  setg BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
+      } else {
+        fmt.println("less pushed")
+        unreachable()
+
+      }
 
     case .call:
       arg_num := get_arg_num_from_call(instr.params[:])
@@ -762,15 +621,44 @@ generate_instr :: proc(
         fmt.sbprintf(b, "  push QWORD[fn_args_%d]\n", i)
       }
 
-      if len(instr.params) > 5 && instr.optional == "extrn" {
-
+      if instr.optional == "extrn" {
         i := 0
         for ins in instr.params {
           if i <= 5 {
             if ins.instr == .load {
-              fmt.sbprintf(b, "  mov %s, QWORD[%s_%d]\n", syscall_reg_list[i][0], ins.name, i)
+
+              if len(ins.params) > 0 {
+                generate_instr(b, ins.params[:])
+                fmt.sbprintf(b, "  mov r15, [tmp_0]\n")
+              } else {
+                fmt.sbprintf(b, "  xor r15, r15\n")
+
+              }
+
+              if ins.ptr {
+                fmt.sbprintf(b, "  add r15, %s_0\n", ins.name)
+
+                fmt.sbprintf(
+                  b,
+                  "  xor %s, %s\n  mov %s, r15\n",
+                  syscall_reg_list[i + 1][0],
+                  syscall_reg_list[i + 1][0],
+                  syscall_reg_list[i + 1][0],
+                )
+              } else {
+                fmt.sbprintf(
+                  b,
+                  "  xor %s, %s\n  mov %s, %s[%s_0 + r15]\n",
+                  syscall_reg_list[i + 1][0],
+                  syscall_reg_list[i + 1][0],
+                  syscall_reg_list[i + 1][sys_reg_offset[auto_cast ins.type]],
+                  conv_list[auto_cast ins.type],
+                  ins.name,
+                )
+
+              }
             } else if ins.instr == .push {
-              fmt.sbprintf(b, "  mov %s, %d\n", syscall_reg_list[i][0], ins.val)
+              fmt.sbprintf(b, "  mov %s, %d\n", syscall_reg_list[i + 1][0], ins.val)
             }
           } else {
             break
@@ -791,16 +679,15 @@ generate_instr :: proc(
           ii -= 1
         }
       } else {
-        instr.offset = -2
+        instr.offset = -RDI
         generate_instr(b, instr.params[:], &instr)
 
         if instr.type_num != 0 {
           for i in 0 ..< instr.type_num {
-            fmt.sbprintf(b, "  mov QWORD[fn_args_%d], %s\n", i, syscall_reg_list[i][0])
+            fmt.sbprintf(b, "  mov QWORD[fn_args_%d], %s\n", i, syscall_reg_list[i + 1][0])
           }
         }
       }
-
 
       fmt.sbprintf(b, "  xor rax, rax\n")
       fmt.sbprintf(b, "  call %s\n", call_name)
@@ -814,176 +701,729 @@ generate_instr :: proc(
       }
 
 
+    case .load:
       if pptr {
-        fmt.sbprintf(
-          b,
-          "  mov %s[%s_%d] ,%s\n",
-          conv_list[auto_cast parent_ptr.type],
-          parent_ptr.name,
-          parent_ptr.offset,
-          syscall_reg_list[RAX][sys_reg_offset[auto_cast parent_ptr.type]],
-        )
-      }
 
-    case .nothing, .fn_declare:
-    case .return_:
-      fmt.sbprintf(b, "  ret\n")
+        to_load: string
 
-    case .less:
-      if pptr {
         if parent_ptr.offset < 0 {
-          if parent_ptr.offset < -1 {
-            instr.name = ""
-            instr.type = parent_ptr.type
-            instr.offset = -13
-
-            generate_instr(b, instr.params[:], &instr)
-
-            fmt.sbprintf(b, "  cmp r12, r11\n") // num1 < = > num2
-            fmt.sbprintf(b, "  setl BYTE[cmp_0]\n")
-          }
-        } else {
-
-          instr.name = ""
-          instr.type = parent_ptr.type
-          instr.offset = -13
-
-          generate_instr(b, instr.params[:], &instr)
-
+          to_load =
+            syscall_reg_list[-parent_ptr.offset][sys_reg_offset[parent_ptr.type != .n_none ? auto_cast parent_ptr.type : auto_cast instr.type]]
           fmt.sbprintf(
             b,
-            "  cmp %s[%s_%d], %s\n",
-            conv_list[auto_cast parent_ptr.type],
-            parent_ptr.name,
-            parent_ptr.offset,
-            syscall_reg_list[R13][sys_reg_offset[auto_cast parent_ptr.type]],
-          ) // num1 < = > num2
-          fmt.sbprintf(b, "  setl BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
-        }
-      } else {
-        generate_instr(b, instr.params[:])
-        fmt.sbprintf(b, "  pop r12\n") // num2
-        fmt.sbprintf(b, "  pop r11\n") // num1
-        fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
-        fmt.sbprintf(b, "  setl BYTE[cmp_0]\n")
-      }
-
-    case .greater:
-      if pptr {
-        if parent_ptr.offset < 0 {
-          if parent_ptr.offset < -1 {
-            instr.name = ""
-            instr.type = parent_ptr.type
-            instr.offset = -13
-
-            generate_instr(b, instr.params[:], &instr)
-
-            fmt.sbprintf(b, "  cmp r12, r11\n") // num1 < = > num2
-            fmt.sbprintf(b, "  setg BYTE[cmp_0]\n")
-          }
+            "  xor %s, %s\n",
+            syscall_reg_list[-parent_ptr.offset][0],
+            syscall_reg_list[-parent_ptr.offset][0],
+          )
+          parent_ptr.offset -= 1
         } else {
-
-          instr.name = ""
-          instr.type = parent_ptr.type
-          instr.offset = -13
-
-          generate_instr(b, instr.params[:], &instr)
-
-          fmt.sbprintf(
-            b,
-            "  cmp %s[%s_%d], %s\n",
-            conv_list[auto_cast parent_ptr.type],
-            parent_ptr.name,
-            parent_ptr.offset,
-            syscall_reg_list[R13][sys_reg_offset[auto_cast parent_ptr.type]],
-          ) // num1 < = > num2
-          fmt.sbprintf(b, "  setg BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
+          to_load = parent_ptr.name
         }
-      } else {
-        generate_instr(b, instr.params[:])
-        fmt.sbprintf(b, "  pop r12\n") // num2
-        fmt.sbprintf(b, "  pop r11\n") // num1
-        fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
-        fmt.sbprintf(b, "  setg BYTE[cmp_0]\n")
-      }
 
-    case .noteq:
-      if pptr {
-        if parent_ptr.offset < 0 {
-          if parent_ptr.offset < -1 {
-            instr.name = ""
-            instr.type = parent_ptr.type
-            instr.offset = -13
 
-            generate_instr(b, instr.params[:], &instr)
-
-            fmt.sbprintf(b, "  cmp r12, r11\n") // num1 < = > num2
-            fmt.sbprintf(b, "  sete BYTE[cmp_0]\n")
-          }
+        if len(instr.params) == 0 {
+          fmt.sbprintf(b, "   \n")
         } else {
-
-          instr.name = ""
-          instr.type = parent_ptr.type
-          instr.offset = -13
-
-          generate_instr(b, instr.params[:], &instr)
-
-          fmt.sbprintf(
-            b,
-            "  cmp %s[%s_%d], %s\n",
-            conv_list[auto_cast parent_ptr.type],
-            parent_ptr.name,
-            parent_ptr.offset,
-            syscall_reg_list[R13][sys_reg_offset[auto_cast parent_ptr.type]],
-          ) // num1 < = > num2
-          fmt.sbprintf(b, "  sete BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
+          assert(false, "not implemented yet 0")
         }
+
+        // fmt.println(string(b.buf[:]))
+        // fmt.println(to_load, instr)
+
+
+        os.exit(1)
       } else {
-        generate_instr(b, instr.params[:])
-        fmt.sbprintf(b, "  pop r12\n") // num2
-        fmt.sbprintf(b, "  pop r11\n") // num1
-        fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
-        fmt.sbprintf(b, "  sete BYTE[cmp_0]\n")
+        fmt.println("load pushed")
+        unreachable()
       }
 
-    case .eq:
-      if pptr {
-        if parent_ptr.offset < 0 {
-          if parent_ptr.offset < -1 {
-            instr.name = ""
-            instr.type = parent_ptr.type
-            instr.offset = -13
+    case .offset:
+      fmt.println(instr)
+      generate_instr(b, instr.params[:], &instr)
 
-            generate_instr(b, instr.params[:], &instr)
 
-            fmt.sbprintf(b, "  cmp r12, r11\n") // num1 < = > num2
-            fmt.sbprintf(b, "  mov QWORD[cmp_0], 0\n")
-            fmt.sbprintf(b, "  setne BYTE[cmp_0]\n")
-          }
-        } else {
-          instr.name = ""
-          instr.type = parent_ptr.type
-          instr.offset = -13
+    case .if_:
+      old_off := instr.offset
+      instr.offset = -R12
 
-          generate_instr(b, instr.params[:], &instr)
+      fmt.sbprintf(b, "  mov QWORD[cmp_0], 0\n")
+      generate_instr(b, instr.params[:], &instr)
+      fmt.sbprintf(b, "  cmp BYTE[cmp_0], 1\n")
+      fmt.sbprintf(b, "  je label_%d\n", old_off)
 
-          fmt.sbprintf(
-            b,
-            "  cmp %s[%s_%d], %s\n",
-            conv_list[auto_cast parent_ptr.type],
-            parent_ptr.name,
-            parent_ptr.offset,
-            syscall_reg_list[R13][sys_reg_offset[auto_cast parent_ptr.type]],
-          ) // num1 < = > num2
-          fmt.sbprintf(b, "  setne BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
-        }
-      } else {
-        generate_instr(b, instr.params[:])
-        fmt.sbprintf(b, "  pop r12\n") // num2
-        fmt.sbprintf(b, "  pop r11\n") // num1
-        fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
-        fmt.sbprintf(b, "  setne BYTE[cmp_0]\n")
-      }
+    //   case .assign:
+    //     instr.offset = 0
+
+    //     if instr.params[0].instr == .push {
+    //       instr.val = auto_cast instr.params[0].val
+    //       generate_instr(b, instr.params[:], &instr)
+    //     } else {
+
+    //       numn := instr.params[0]
+    //       generate_instr(b, {numn})
+    //       ordered_remove(&instr.params, 0)
+
+    //       fmt.sbprintf(b, "  pop r15\n")
+
+    //       if numn.deref {
+    //         fmt.sbprintf(b, ";; ----deref\n")
+    //       } else if numn.ptr {
+    //         fmt.sbprintf(b, "  mov QWORD[%s_%d], r15\n", instr.name, instr.offset)
+    //       } else {
+    //         old := instr.name
+    //         instr.name = "tmp"
+    //         instr.offset = 0
+
+    //         generate_instr(b, instr.params[:], &instr)
+
+
+    //         fmt.sbprintf(b, "  mov r14, [tmp_0]\n")
+
+    //         fmt.sbprintf(
+    //           b,
+    //           "  mov %s[%s_0 + r15], %s ;hjikuihk\n",
+    //           conv_list[auto_cast instr.type],
+    //           old,
+    //           syscall_reg_list[R14][sys_reg_offset[auto_cast instr.type]],
+    //         )
+    //       }
+
+
+    //     }
+
+    //   case .sub:
+    //     if pptr {
+    //       instr.name = ""
+    //       instr.type = parent_ptr.type
+    //       instr.offset = -11
+    //       generate_instr(b, instr.params[:], &instr)
+    //       fmt.sbprintf(
+    //         b,
+    //         "  sub %s%c%s_%d%c, %s\n",
+    //         conv_list[auto_cast parent_ptr.type],
+    //         parent_ptr.ptr ? ' ' : '[',
+    //         parent_ptr.name,
+    //         parent_ptr.offset,
+    //         parent_ptr.ptr ? ' ' : ']',
+    //         syscall_reg_list[9][sys_reg_offset[auto_cast instr.type]],
+    //       )
+
+    //     } else {
+    //       assert(false, "sub pushed")
+    //     }
+
+
+    //   case .add:
+    //     if pptr {
+    //       instr.name = ""
+    //       instr.type = parent_ptr.type
+    //       instr.offset = -11
+    //       generate_instr(b, instr.params[:], &instr)
+    //       fmt.sbprintf(
+    //         b,
+    //         "  add %s%c%s_%d%c, %s\n",
+    //         conv_list[auto_cast parent_ptr.type],
+    //         parent_ptr.ptr ? ' ' : '[',
+    //         parent_ptr.name,
+    //         parent_ptr.offset,
+    //         parent_ptr.ptr ? ' ' : ']',
+    //         syscall_reg_list[9][sys_reg_offset[auto_cast instr.type]],
+    //       )
+
+    //     } else {
+    //       assert(false, "add pushed")
+    //     }
+
+    //   case .mult:
+    //     if pptr {
+    //       instr.name = ""
+    //       instr.type = parent_ptr.type
+    //       instr.offset = -11
+    //       generate_instr(b, instr.params[:], &instr)
+    //       fmt.sbprintf(
+    //         b,
+    //         "  imul %s, %s%c%s_%d%c\n",
+    //         syscall_reg_list[9][sys_reg_offset[auto_cast instr.type]],
+    //         conv_list[auto_cast parent_ptr.type],
+    //         parent_ptr.ptr ? ' ' : '[',
+    //         parent_ptr.name,
+    //         parent_ptr.offset,
+    //         parent_ptr.ptr ? ' ' : ']',
+    //       )
+    //       fmt.sbprintf(
+    //         b,
+    //         "  mov %s%c%s_%d%c, %s\n",
+    //         conv_list[auto_cast parent_ptr.type],
+    //         parent_ptr.ptr ? ' ' : '[',
+    //         parent_ptr.name,
+    //         parent_ptr.offset,
+    //         parent_ptr.ptr ? ' ' : ']',
+    //         syscall_reg_list[9][sys_reg_offset[auto_cast instr.type]],
+    //       )
+
+    //     } else {
+    //       assert(false, "mult pushed")
+    //     }
+
+    //   case .div:
+    //     if pptr {
+    //       instr.name = ""
+    //       instr.type = parent_ptr.type
+    //       instr.offset = -2
+    //       fmt.sbprintf(b, "  push rax\n")
+    //       generate_instr(b, instr.params[:], &instr)
+    //       fmt.sbprintf(
+    //         b,
+    //         "  xchg %s, %s%c%s_%d%c\n",
+    //         syscall_reg_list[RAX][sys_reg_offset[auto_cast instr.type]],
+    //         conv_list[auto_cast parent_ptr.type],
+    //         parent_ptr.ptr ? ' ' : '[',
+    //         parent_ptr.name,
+    //         parent_ptr.offset,
+    //         parent_ptr.ptr ? ' ' : ']',
+    //       )
+    //       fmt.sbprintf(b, "  cqo\n")
+    //       fmt.sbprintf(
+    //         b,
+    //         "  idiv %s%c%s_%d%c\n",
+    //         conv_list[auto_cast parent_ptr.type],
+    //         parent_ptr.ptr ? ' ' : '[',
+    //         parent_ptr.name,
+    //         parent_ptr.offset,
+    //         parent_ptr.ptr ? ' ' : ']',
+    //         // syscall_reg_list[9][sys_reg_offset[auto_cast instr.type]],
+    //       )
+    //       fmt.sbprintf(
+    //         b,
+    //         "  xchg %s, %s%c%s_%d%c\n",
+    //         syscall_reg_list[RAX][sys_reg_offset[auto_cast instr.type]],
+    //         conv_list[auto_cast parent_ptr.type],
+    //         parent_ptr.ptr ? ' ' : '[',
+    //         parent_ptr.name,
+    //         parent_ptr.offset,
+    //         parent_ptr.ptr ? ' ' : ']',
+    //       )
+    //       fmt.sbprintf(b, "  pop rax\n")
+
+
+    //     } else {
+    //       assert(false, "div pushed")
+    //     }
+
+    //   case .mod:
+    //     if pptr {
+    //       instr.name = ""
+    //       instr.type = parent_ptr.type
+    //       instr.offset = -2
+    //       fmt.sbprintf(b, "  push rax\n")
+    //       generate_instr(b, instr.params[:], &instr)
+    //       fmt.sbprintf(
+    //         b,
+    //         "  xchg %s, %s%c%s_%d%c\n",
+    //         syscall_reg_list[RAX][sys_reg_offset[auto_cast instr.type]],
+    //         conv_list[auto_cast parent_ptr.type],
+    //         parent_ptr.ptr ? ' ' : '[',
+    //         parent_ptr.name,
+    //         parent_ptr.offset,
+    //         parent_ptr.ptr ? ' ' : ']',
+    //       )
+    //       fmt.sbprintf(b, "  cqo\n")
+    //       fmt.sbprintf(
+    //         b,
+    //         "  idiv %s%c%s_%d%c\n",
+    //         conv_list[auto_cast parent_ptr.type],
+    //         parent_ptr.ptr ? ' ' : '[',
+    //         parent_ptr.name,
+    //         parent_ptr.offset,
+    //         parent_ptr.ptr ? ' ' : ']',
+    //         // syscall_reg_list[9][sys_reg_offset[auto_cast instr.type]],
+    //       )
+    //       fmt.sbprintf(
+    //         b,
+    //         "  xchg %s, %s%c%s_%d%c\n",
+    //         syscall_reg_list[RDX][sys_reg_offset[auto_cast instr.type]],
+    //         conv_list[auto_cast parent_ptr.type],
+    //         parent_ptr.ptr ? ' ' : '[',
+    //         parent_ptr.name,
+    //         parent_ptr.offset,
+    //         parent_ptr.ptr ? ' ' : ']',
+    //       )
+    //       fmt.sbprintf(b, "  pop rax\n")
+
+
+    //     } else {
+    //       assert(false, "div pushed")
+    //     }
+
+
+    //   case .push:
+    //     if pptr {
+    //       if parent_ptr.offset < 0 {
+    //         if parent_ptr.offset < -1 {
+    //           fmt.sbprintf(
+    //             b,
+    //             "  mov %s, %d\n",
+    //             syscall_reg_list[-parent_ptr.offset - 2][0],
+    //             instr.val,
+    //           )
+    //           parent_ptr.offset -= 1
+    //         } else {
+    //           fmt.sbprintf(b, "  mov %s, %d\n", parent_ptr.name, instr.val)
+    //         }
+    //       } else {
+
+    //         if instr.optional == "" {
+    //           fmt.sbprintf(
+    //             b,
+    //             "  mov %s%c%s_%d%c, %d\n",
+    //             conv_list[auto_cast parent_ptr.type],
+    //             parent_ptr.ptr ? ' ' : '[',
+    //             parent_ptr.name,
+    //             parent_ptr.offset,
+    //             parent_ptr.ptr ? ' ' : ']',
+    //             instr.val,
+    //           )
+    //         } else {
+    //           fmt.sbprintf(
+    //             b,
+    //             "  mov %s%c%s_%d%c, \"%s\"\n",
+    //             conv_list[auto_cast parent_ptr.type],
+    //             parent_ptr.ptr ? ' ' : '[',
+    //             parent_ptr.name,
+    //             parent_ptr.offset,
+    //             parent_ptr.ptr ? ' ' : ']',
+    //             instr.optional,
+    //           )
+
+    //         }
+
+    //       }
+
+    //     } else {
+    //       fmt.sbprintf(b, "  push %d\n", instr.val)
+    //     }
+
+    //   case .load:
+    //     if pptr {
+    //       if parent_ptr.offset < 0 {
+    //         if parent_ptr.offset < -1 {
+    //           if len(instr.params) > 0 {
+    //             if instr.params[0].instr == .push {
+    //               instr.offset = auto_cast instr.params[0].val
+    //               unordered_remove(&instr.params, 0)
+    //               fmt.sbprintf(
+    //                 b,
+    //                 "  xor %s, %s\n  mov %s, %c%s_%d%c\n",
+    //                 syscall_reg_list[-parent_ptr.offset - 2][0],
+    //                 syscall_reg_list[-parent_ptr.offset - 2][0],
+    //                 syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
+    //                 // conv_list[instr.ptr ? 1 : int(instr.type)],
+    //                 instr.ptr ? ' ' : '[',
+    //                 instr.name,
+    //                 instr.offset,
+    //                 instr.ptr ? ' ' : ']',
+    //               )
+
+    //               if len(instr.params) > 0 {
+    //                 fmt.eprintln("cannot do ops in in brackets sorry")
+    //                 os.exit(1)
+    //               }
+
+    //             } else {
+
+
+    //               numn := instr.params[0]
+    //               generate_instr(b, {numn})
+    //               ordered_remove(&instr.params, 0)
+
+    //               if len(instr.params) > 0 {
+    //                 fmt.eprintln("cannot do ops in in brackets sorry")
+    //                 os.exit(1)
+    //               }
+
+
+    //               if numn.deref {
+    //                 fmt.sbprintf(b, ";----deref\n")
+    //                 fmt.sbprintf(
+    //                   b,
+    //                   "  xor %s, %s\n",
+    //                   syscall_reg_list[-parent_ptr.offset - 2][0],
+    //                   syscall_reg_list[-parent_ptr.offset - 2][0],
+    //                 )
+    //                 fmt.sbprintf(b, "  pop r15\n")
+    //                 fmt.sbprintf(b, "  mov r15, [r15]\n")
+    //                 fmt.sbprintf(
+    //                   b,
+    //                   "  xor %s, %s\n",
+    //                   syscall_reg_list[-parent_ptr.offset - 2][0],
+    //                   syscall_reg_list[-parent_ptr.offset - 2][0],
+    //                 )
+    //                 fmt.sbprintf(
+    //                   b,
+    //                   "  mov %s, [%s_0 + r15]\n",
+    //                   syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
+    //                   instr.name,
+    //                 )
+
+
+    //               } else if numn.ptr {
+    //                 fmt.sbprintln(b, ";-----ptr")
+    //               } else {
+    //                 fmt.sbprintf(b, "  pop r15\n")
+    //                 fmt.sbprintf(
+    //                   b,
+    //                   "  xor %s, %s\n",
+    //                   syscall_reg_list[-parent_ptr.offset - 2][0],
+    //                   syscall_reg_list[-parent_ptr.offset - 2][0],
+    //                 )
+    //                 fmt.sbprintf(
+    //                   b,
+    //                   "  mov %s, [%s_0 + r15]\n",
+    //                   syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
+    //                   instr.name,
+    //                 )
+    //               }
+    //             }
+    //           } else {
+    //             fmt.sbprintf(
+    //               b,
+    //               "  xor %s, %s\n  mov %s, %c%s_%d%c\n",
+    //               syscall_reg_list[-parent_ptr.offset - 2][0],
+    //               syscall_reg_list[-parent_ptr.offset - 2][0],
+    //               syscall_reg_list[-parent_ptr.offset - 2][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
+    //               // conv_list[instr.ptr ? 1 : int(instr.type)],
+    //               instr.ptr ? ' ' : '[',
+    //               instr.name,
+    //               instr.offset,
+    //               instr.ptr ? ' ' : ']',
+    //             )
+
+    //           }
+
+
+    //           // if instr.deref {
+
+    //           //   if instr.optional == "char" {
+    //           //     fmt.sbprintf(b, "  xor r13, r13\n")
+    //           //     fmt.sbprintf(b, "  mov r13b, [%s]\n", syscall_reg_list[-parent_ptr.offset - 2][0])
+    //           //     fmt.sbprintf(b, "  mov %s, r13\n", syscall_reg_list[-parent_ptr.offset - 2][0])
+
+    //           //   } else {
+    //           //     // TODO: maybe 16/32 bits later
+    //           //     fmt.sbprintf(
+    //           //       b,
+    //           //       "  mov %s, [%s];000\n",
+    //           //       syscall_reg_list[-parent_ptr.offset - 2][0],
+    //           //       syscall_reg_list[-parent_ptr.offset - 2][0],
+    //           //     )
+    //           //   }
+    //           // }
+
+    //           parent_ptr.offset -= 1
+    //         } else {
+    //           fmt.sbprintf(
+    //             b,
+    //             "  mov %s, %s_%d\n",
+    //             parent_ptr.name,
+    //             // conv_list[auto_cast instr.type],
+    //             instr.name,
+    //             instr.offset,
+    //           )
+    //         }
+    //       } else {
+    //         fmt.sbprintf(
+    //           b,
+    //           "  mov %s, %c%s_%d%c\n",
+    //           syscall_reg_list[R14][instr.ptr ? 0 : sys_reg_offset[auto_cast instr.type]],
+    //           instr.ptr ? ' ' : '[',
+    //           instr.name,
+    //           instr.offset >= 0 ? instr.offset : 0,
+    //           instr.ptr ? ' ' : ']',
+    //         )
+
+    //         fmt.sbprintf(
+    //           b,
+    //           "  mov %s[%s_%d], %s\n",
+    //           conv_list[auto_cast parent_ptr.type],
+    //           parent_ptr.name,
+    //           parent_ptr.offset,
+    //           syscall_reg_list[R14][instr.ptr ? 0 : sys_reg_offset[auto_cast parent_ptr.type]],
+    //         )
+    //       }
+
+    //     } else {
+    //       fmt.sbprintf(
+    //         b,
+    //         "  push %s%c%s_%d%c\n",
+    //         conv_list[auto_cast instr.type],
+    //         instr.ptr ? ' ' : '[',
+    //         instr.name,
+    //         instr.offset,
+    //         instr.ptr ? ' ' : ']',
+    //       )
+    //     }
+
+    //   case .if_:
+    //     old_off := instr.offset
+    //     instr.offset = -14
+
+    //     fmt.sbprintf(b, "  mov QWORD[cmp_0], 0\n")
+    //     generate_instr(b, instr.params[:], &instr)
+    //     fmt.sbprintf(b, "  cmp BYTE[cmp_0], 1\n")
+    //     fmt.sbprintf(b, "  je label_%d\n", old_off)
+
+    //   case .while:
+    //     old_off := instr.offset
+    //     instr.offset = -14
+
+    //     fmt.sbprintf(b, "  mov QWORD[cmp_0], 0\n")
+    //     generate_instr(b, instr.params[:], &instr)
+    //     fmt.sbprintf(b, "  cmp BYTE[cmp_0], 1\n")
+    //     fmt.sbprintf(b, "  je label_%d\n", old_off)
+
+
+    //   case .label:
+    //     fmt.sbprintf(b, "label_%d:\n", instr.offset)
+
+    //   case .jmp:
+    //     fmt.sbprintf(b, "  jmp label_%d\n", instr.offset)
+
+    //   case .fn:
+
+    //   case .block:
+    //     fmt.sbprintf(b, "  xor rax, rax\n")
+    //     fmt.sbprintf(b, "  call block_%d\n", instr.offset)
+
+    //   case .call:
+    //     arg_num := get_arg_num_from_call(instr.params[:])
+    //     call_name := instr.name
+
+    //     for i in 0 ..< len(instr.params) {
+    //       fmt.sbprintf(b, "  push QWORD[fn_args_%d]\n", i)
+    //     }
+
+    //     if len(instr.params) > 5 && instr.optional == "extrn" {
+
+    //       i := 0
+    //       for ins in instr.params {
+    //         if i <= 5 {
+    //           if ins.instr == .load {
+    //             fmt.sbprintf(b, "  mov %s, QWORD[%s_%d]\n", syscall_reg_list[i][0], ins.name, i)
+    //           } else if ins.instr == .push {
+    //             fmt.sbprintf(b, "  mov %s, %d\n", syscall_reg_list[i][0], ins.val)
+    //           }
+    //         } else {
+    //           break
+    //         }
+    //         i += 1
+    //       }
+    //       // 1 2 3 4 5 | 6 7
+    //       //     | 
+    //       ii := len(instr.params) - 1
+    //       // fmt.println(i, ii)
+    //       for ii >= i {
+    //         ins := instr.params[ii]
+    //         if ins.instr == .load {
+    //           fmt.sbprintf(b, "  push QWORD[%s_%d]\n", ins.name, ii)
+    //         } else if ins.instr == .push {
+    //           fmt.sbprintf(b, "  push %d\n", ins.val)
+    //         }
+    //         ii -= 1
+    //       }
+    //     } else {
+    //       instr.offset = -2
+    //       generate_instr(b, instr.params[:], &instr)
+
+    //       if instr.type_num != 0 {
+    //         for i in 0 ..< instr.type_num {
+    //           fmt.sbprintf(b, "  mov QWORD[fn_args_%d], %s\n", i, syscall_reg_list[i][0])
+    //         }
+    //       }
+    //     }
+
+
+    //     fmt.sbprintf(b, "  xor rax, rax\n")
+    //     fmt.sbprintf(b, "  call %s\n", call_name)
+
+    //     if instr.optional == "extrn" && len(instr.params) > 5 {
+    //       for i in 5 ..< len(instr.params) - 1 do fmt.sbprintf(b, "  pop QWORD[trash_0]\n")
+    //     }
+
+    //     for i in 0 ..< len(instr.params) {
+    //       fmt.sbprintf(b, "  pop QWORD[fn_args_%d]\n", len(instr.params) - i - 1)
+    //     }
+
+
+    //     if pptr {
+    //       fmt.sbprintf(
+    //         b,
+    //         "  mov %s[%s_%d] ,%s\n",
+    //         conv_list[auto_cast parent_ptr.type],
+    //         parent_ptr.name,
+    //         parent_ptr.offset,
+    //         syscall_reg_list[RAX][sys_reg_offset[auto_cast parent_ptr.type]],
+    //       )
+    //     }
+
+    //   case .nothing, .fn_declare:
+    //   case .return_:
+    //     fmt.sbprintf(b, "  ret\n")
+
+    //   case .less:
+    //     if pptr {
+    //       if parent_ptr.offset < 0 {
+    //         if parent_ptr.offset < -1 {
+    //           instr.name = ""
+    //           instr.type = parent_ptr.type
+    //           instr.offset = -13
+
+    //           generate_instr(b, instr.params[:], &instr)
+
+    //           fmt.sbprintf(b, "  cmp r12, r11\n") // num1 < = > num2
+    //           fmt.sbprintf(b, "  setl BYTE[cmp_0]\n")
+    //         }
+    //       } else {
+
+    //         instr.name = ""
+    //         instr.type = parent_ptr.type
+    //         instr.offset = -13
+
+    //         generate_instr(b, instr.params[:], &instr)
+
+    //         fmt.sbprintf(
+    //           b,
+    //           "  cmp %s[%s_%d], %s\n",
+    //           conv_list[auto_cast parent_ptr.type],
+    //           parent_ptr.name,
+    //           parent_ptr.offset,
+    //           syscall_reg_list[R13][sys_reg_offset[auto_cast parent_ptr.type]],
+    //         ) // num1 < = > num2
+    //         fmt.sbprintf(b, "  setl BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
+    //       }
+    //     } else {
+    //       generate_instr(b, instr.params[:])
+    //       fmt.sbprintf(b, "  pop r12\n") // num2
+    //       fmt.sbprintf(b, "  pop r11\n") // num1
+    //       fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
+    //       fmt.sbprintf(b, "  setl BYTE[cmp_0]\n")
+    //     }
+
+    //   case .greater:
+    //     if pptr {
+    //       if parent_ptr.offset < 0 {
+    //         if parent_ptr.offset < -1 {
+    //           instr.name = ""
+    //           instr.type = parent_ptr.type
+    //           instr.offset = -13
+
+    //           generate_instr(b, instr.params[:], &instr)
+
+    //           fmt.sbprintf(b, "  cmp r12, r11\n") // num1 < = > num2
+    //           fmt.sbprintf(b, "  setg BYTE[cmp_0]\n")
+    //         }
+    //       } else {
+
+    //         instr.name = ""
+    //         instr.type = parent_ptr.type
+    //         instr.offset = -13
+
+    //         generate_instr(b, instr.params[:], &instr)
+
+    //         fmt.sbprintf(
+    //           b,
+    //           "  cmp %s[%s_%d], %s\n",
+    //           conv_list[auto_cast parent_ptr.type],
+    //           parent_ptr.name,
+    //           parent_ptr.offset,
+    //           syscall_reg_list[R13][sys_reg_offset[auto_cast parent_ptr.type]],
+    //         ) // num1 < = > num2
+    //         fmt.sbprintf(b, "  setg BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
+    //       }
+    //     } else {
+    //       generate_instr(b, instr.params[:])
+    //       fmt.sbprintf(b, "  pop r12\n") // num2
+    //       fmt.sbprintf(b, "  pop r11\n") // num1
+    //       fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
+    //       fmt.sbprintf(b, "  setg BYTE[cmp_0]\n")
+    //     }
+
+    //   case .noteq:
+    //     if pptr {
+    //       if parent_ptr.offset < 0 {
+    //         if parent_ptr.offset < -1 {
+    //           instr.name = ""
+    //           instr.type = parent_ptr.type
+    //           instr.offset = -13
+
+    //           generate_instr(b, instr.params[:], &instr)
+
+    //           fmt.sbprintf(b, "  cmp r12, r11\n") // num1 < = > num2
+    //           fmt.sbprintf(b, "  sete BYTE[cmp_0]\n")
+    //         }
+    //       } else {
+
+    //         instr.name = ""
+    //         instr.type = parent_ptr.type
+    //         instr.offset = -13
+
+    //         generate_instr(b, instr.params[:], &instr)
+
+    //         fmt.sbprintf(
+    //           b,
+    //           "  cmp %s[%s_%d], %s\n",
+    //           conv_list[auto_cast parent_ptr.type],
+    //           parent_ptr.name,
+    //           parent_ptr.offset,
+    //           syscall_reg_list[R13][sys_reg_offset[auto_cast parent_ptr.type]],
+    //         ) // num1 < = > num2
+    //         fmt.sbprintf(b, "  sete BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
+    //       }
+    //     } else {
+    //       generate_instr(b, instr.params[:])
+    //       fmt.sbprintf(b, "  pop r12\n") // num2
+    //       fmt.sbprintf(b, "  pop r11\n") // num1
+    //       fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
+    //       fmt.sbprintf(b, "  sete BYTE[cmp_0]\n")
+    //     }
+
+    //   case .eq:
+    //     if pptr {
+    //       if parent_ptr.offset < 0 {
+    //         if parent_ptr.offset < -1 {
+    //           instr.name = ""
+    //           instr.type = parent_ptr.type
+    //           instr.offset = -13
+
+    //           generate_instr(b, instr.params[:], &instr)
+
+    //           fmt.sbprintf(b, "  cmp r12, r11\n") // num1 < = > num2
+    //           fmt.sbprintf(b, "  mov QWORD[cmp_0], 0\n")
+    //           fmt.sbprintf(b, "  setne BYTE[cmp_0]\n")
+    //         }
+    //       } else {
+    //         instr.name = ""
+    //         instr.type = parent_ptr.type
+    //         instr.offset = -13
+
+    //         generate_instr(b, instr.params[:], &instr)
+
+    //         fmt.sbprintf(
+    //           b,
+    //           "  cmp %s[%s_%d], %s\n",
+    //           conv_list[auto_cast parent_ptr.type],
+    //           parent_ptr.name,
+    //           parent_ptr.offset,
+    //           syscall_reg_list[R13][sys_reg_offset[auto_cast parent_ptr.type]],
+    //         ) // num1 < = > num2
+    //         fmt.sbprintf(b, "  setne BYTE[%s_%d]\n", parent_ptr.name, parent_ptr.offset)
+    //       }
+    //     } else {
+    //       generate_instr(b, instr.params[:])
+    //       fmt.sbprintf(b, "  pop r12\n") // num2
+    //       fmt.sbprintf(b, "  pop r11\n") // num1
+    //       fmt.sbprintf(b, "  cmp r11, r12\n") // num1 < = > num2
+    //       fmt.sbprintf(b, "  setne BYTE[cmp_0]\n")
+    //     }
 
     case:
       fmt.print("curent state: \n", string(b.buf[:]))

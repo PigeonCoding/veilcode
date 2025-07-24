@@ -10,7 +10,7 @@ let g: char = 002  !=  02;
 let h: char = 002  <   01;
 let i: char = 002  >   01;
 
-printf("034  +   35 = %d\n", a);
+printf("034  +   35 = %d\n", a[0]);
 printf("05   -   10 = %d\n", b);
 printf("006  *   10 = %d\n", c);
 printf("100  /   04 = %d\n", d);

@@ -216,8 +216,8 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
     }
 
 
-  // case .close_parenthesis, .close_brace:
-  //   return
+  case .close_parenthesis:
+    return
 
   case .open_brace:
     lx.get_token(l)
@@ -499,44 +499,44 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         ins.type_num = var.type_num
 
         lx.get_token(l)
-        if l.token.type == .open_bracket {
-          lx.get_token(l)
-          // TODO: support variables maybe when dynamic allocs are made
+        parse_shit(l, &ins.params)
+        // if l.token.type == .open_bracket {
+        //   lx.get_token(l)
+        //   // TODO: support variables maybe when dynamic allocs are made
 
-          
-          parse_shit(l, &ins.params)
-          if ins.params[0].instr == .load || ins.params[0].instr == .push do ins.offset = -1
-          else {
-            fmt.println("unreachable probably")
-            unreachable()
-          }
 
-          lx.get_token(l)
-        }
+        //   if ins.params[0].instr == .load || ins.params[0].instr == .push do ins.offset = -1
+        //   else {
+        //     fmt.println("unreachable probably", l.token)
+        //     unreachable()
+        //   }
 
-        if l.token.type == .pipe {
-          ins.deref = true
+        //   lx.get_token(l)
+        // }
 
-          lx.get_token(l)
-          if !lx.check_type(l, .id) do os.exit(1)
-          ins.optional = l.token.str
+        // if l.token.type == .pipe {
+        //   ins.deref = true
 
-          lx.get_token(l)
-        }
+        //   lx.get_token(l)
+        //   if !lx.check_type(l, .id) do os.exit(1)
+        //   ins.optional = l.token.str
 
-        if l.token.type != .equals_sign && ins.instr != .reg {
-          ins.instr = .load
-        } else {
-          lx.get_token(l)
+        //   lx.get_token(l)
+        // }
 
-          for l.token.type != .semicolon &&
-              l.token.type != .null_char &&
-              l.token.type != .either_end_or_failure {
-            parse_shit(l, &ins.params)
-          }
+        // if l.token.type != .equals_sign && ins.instr != .reg {
+        //   ins.instr = .load
+        // } else {
+        //   lx.get_token(l)
 
-          lx.get_token(l)
-        }
+        //   for l.token.type != .semicolon &&
+        //       l.token.type != .null_char &&
+        //       l.token.type != .either_end_or_failure {
+        //     parse_shit(l, &ins.params)
+        //   }
+
+        //   lx.get_token(l)
+        // }
 
       } else if fn, p := fn_exists(l.token.str).?; p {
 
@@ -549,6 +549,10 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
         lx.get_token(l)
         if !lx.check_type(l, .open_parenthesis) do os.exit(1)
         parse_shit(l, &ins.params)
+
+        for &f in ins.params {
+          if f.instr == .assign do f.instr = .load
+        }
 
         if len(ins.params) > auto_cast ins.type_num && fn.instr != .extrn {
           fmt.eprintln("too many args for the function", ins.name)
@@ -565,6 +569,35 @@ parse_shit :: proc(l: ^lx.lexer, instrs: ^[dynamic]cm.n_instrs) {
       }
 
     }
+
+
+  case .equals_sign:
+    lx.get_token(l)
+    for l.token.type != .semicolon &&
+        l.token.type != .null_char &&
+        l.token.type != .either_end_or_failure {
+      parse_shit(l, &instrs[len(instrs) - 1].params)
+    }
+    lx.get_token(l)
+    return
+
+  case .close_bracket:
+    return
+
+  case .open_bracket:
+    lx.get_token(l)
+    ins.instr = .offset
+    ins.name = "tmp"
+    ins.type = .n_int
+
+    for l.token.type != .close_bracket {
+      parse_shit(l, &ins.params)
+      if ins.params[len(ins.params) - 1].instr == .assign {
+        ins.params[len(ins.params) - 1].instr = .load
+      }
+
+    }
+    lx.get_token(l)
 
   case .ampersand:
     lx.get_token(l)

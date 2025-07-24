@@ -2,6 +2,7 @@
 // modificattions:
 // - added check_type (will probably be added to upstream at some point)
 // - added the 'ascii' to most of the token_ids (will probably also upstream it)
+// - added '$' as a valid id starter
 package lexer
 
 import "core:fmt"

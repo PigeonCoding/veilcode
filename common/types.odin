@@ -30,6 +30,7 @@ n_instrs_enum :: enum {
   fn_declare,
   return_,
   reg,
+  offset,
 }
 
 n_types :: enum {
